@@ -21,7 +21,8 @@
 LIS331 xl;
 
 void init_accel() {
-
+  // Use the pins defined in melty_config.h instead of the board default I2C pins.
+  Wire.setPins(ACCATA, ACCLOCK);
   Wire.begin();
   
   Wire.setClock(400000);  //increase I2C speed to reduce read times a bit
@@ -36,10 +37,14 @@ void init_accel() {
   xl.setFullScale(ACCEL_RANGE);
 }
 
+void get_accel_axes(int16_t &x, int16_t &y, int16_t &z) {
+  xl.readAxes(x, y, z);
+}
+
 //reads accel and converts to G's
 //ACCEL_MAX_SCALE needs to match ACCEL_RANGE value
 float get_accel_force_g() {
   int16_t x, y, z;
-  xl.readAxes(x, y, z);
+  get_accel_axes(x, y, z);
   return xl.convertToG(ACCEL_MAX_SCALE,x);
 }

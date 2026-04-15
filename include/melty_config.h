@@ -19,10 +19,10 @@
 //----------TRANSLATIONAL DRIFT SETTINGS----------
 //"DEFAULT" values are used directly in this first port.
 //If you add persistent storage later, these become fallback values.
-#define DEFAULT_ACCEL_MOUNT_RADIUS_CM 3.9         //Radius of accelerometer from center of robot
+#define DEFAULT_ACCEL_MOUNT_RADIUS_CM 5.3         //Radius of accelerometer from center of robot
 #define DEFAULT_LED_OFFSET_PERCENT 7              //Adjust to make heading LED line up with direction robot travels 0-99 (increasing moves beacon clockwise)
                                                    
-#define DEFAULT_ACCEL_ZERO_G_OFFSET 0.0f          //Value accelerometer returns with robot at rest (in G) - adjusts for any offset
+#define DEFAULT_ACCEL_ZERO_G_OFFSET -0.95f        //Value accelerometer returns with robot at rest (in G) - adjusts for any offset
                                                   //H3LIS331 claims +/-1g DC offset - typical - but +/-2.5 has been observed at +/-400g setting (enough to cause tracking error)
                                                   //Just enterring and exiting config mode will automatically set this value / save to EEPROM (based on current accel reading reflecting 0g)
                                                   //For small-radius bots - try changing to H3LIS331 to +/-200g range for improved accuracy (accel_handler.h)
@@ -37,6 +37,9 @@
 //we need 3 interrupt pins - which requires an Arduino with Atmega32u4 or better (Atmega328 only support 2 interrupts)
 //Common RC receiver setup LEFTRIGHT = CH1, FORBACK = CH2, THROTTLE = CH3
 //Note: Accelerometer is connected with default Arduino SDA / SCL pins
+
+#define ACCLOCK  D0
+#define ACCATA D1
 
 #define LEFTRIGHT_RC_CHANNEL_PIN 7                //To Left / Right on RC receiver
 #define FORBACK_RC_CHANNEL_PIN 1                  //To Forward / Back on RC receiver (Pin 1 on Arduino Micro labelled as "TX" - https://docs.arduino.cc/hacking/hardware/PinMapping32u4)

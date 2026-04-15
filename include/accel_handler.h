@@ -11,9 +11,10 @@
 
 //Change as needed as needed
 //(Adafuit breakout default is 0x18, Sparkfun default is 0x19)
-#define ACCEL_I2C_ADDRESS 0x18
+#define ACCEL_I2C_ADDRESS 0x19
 
 void init_accel();
 
-float get_accel_force_g();
+void get_accel_axes(int16_t &x, int16_t &y, int16_t &z);
 
+float get_accel_force_g();

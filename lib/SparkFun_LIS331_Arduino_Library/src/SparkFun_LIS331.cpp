@@ -186,7 +186,7 @@ void LIS331::intPinMode(pp_od _pinMode)
   uint8_t data;
   LIS331_read(CTRL_REG3, &data, 1);
   // Setting bit 6 makes int pins open drain.
-  if (_pinMode == OPEN_DRAIN)
+  if (_pinMode == INT_PIN_OPEN_DRAIN)
   {
     data |= 1<<6;
   }
@@ -410,4 +410,3 @@ void LIS331::LIS331_read(uint8_t reg_address, uint8_t *data, uint8_t len)
     digitalWrite(CSPin, HIGH);
   }
 }
-
