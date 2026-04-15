@@ -41,10 +41,22 @@ void get_accel_axes(int16_t &x, int16_t &y, int16_t &z) {
   xl.readAxes(x, y, z);
 }
 
+static int16_t get_selected_axis(int16_t x, int16_t y, int16_t z) {
+  switch (ACCEL_FORCE_AXIS) {
+    case 0:
+      return x;
+    case 1:
+      return y;
+    case 2:
+    default:
+      return z;
+  }
+}
+
 //reads accel and converts to G's
 //ACCEL_MAX_SCALE needs to match ACCEL_RANGE value
 float get_accel_force_g() {
   int16_t x, y, z;
   get_accel_axes(x, y, z);
-  return xl.convertToG(ACCEL_MAX_SCALE,x);
+  return xl.convertToG(ACCEL_MAX_SCALE, get_selected_axis(x, y, z));
 }

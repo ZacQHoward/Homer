@@ -13,6 +13,10 @@
 //(Adafuit breakout default is 0x18, Sparkfun default is 0x19)
 #define ACCEL_I2C_ADDRESS 0x19
 
+//Select which axis points toward the robot center / rotation radius.
+//0 = X, 1 = Y, 2 = Z
+#define ACCEL_FORCE_AXIS 2
+
 void init_accel();
 
 void get_accel_axes(int16_t &x, int16_t &y, int16_t &z);
