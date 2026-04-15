@@ -1,83 +1,150 @@
+// Open Melt controller entry point, trimmed for a PlatformIO project.
+// EEPROM and battery monitoring are disabled for the first XIAO ESP32C3 port.
+
 #include <Arduino.h>
 
-#define ACCLOCK  D0
-#define ACCATA D1
-#define MOTOR_1 D5 // Right motor if weapon facing forward
-#define MOTOR_2 D6 // Left motor if weapon facing forward
-#define CHAN_1 D7
-#define CHAN_2 D8
-#define CHAN_3 D9
-#define CHAN_4 D10
+#include "rc_handler.h"
+#include "melty_config.h"
+#include "motor_driver.h"
+#include "accel_handler.h"
+#include "spin_control.h"
+#include "led_driver.h"
 
-volatile uint32_t riseTime = 0;
-volatile uint32_t pulseWidth = 1500; // default neutral
-volatile bool newPulse = false;
-volatile uint32_t lastPulseMicros = 0;
+#ifdef ENABLE_WATCHDOG
+#include <Adafruit_SleepyDog.h>
+#endif
 
-static const uint32_t NEUTRAL_US = 1500;
-static const uint32_t MIN_US = 1000;
-static const uint32_t MAX_US = 2000;
-static const uint32_t FAILSAFE_US = NEUTRAL_US;
-static const uint32_t FAILSAFE_TIMEOUT_US = 100000; // 100ms
+static void echo_diagnostics();
 
-void IRAM_ATTR handleInterrupt() {
-    if (digitalRead(CHAN_3) == HIGH) {
-        riseTime = micros();
-    } else {
-        uint32_t now = micros();
-        pulseWidth = now - riseTime;
-        newPulse = true;
-        lastPulseMicros = now;
+static void service_watchdog() {
+#ifdef ENABLE_WATCHDOG
+    Watchdog.reset();
+#endif
+}
+
+// Loops until a good RC signal is detected and throttle is zero.
+static void wait_for_rc_good_and_zero_throttle() {
+    while (rc_signal_is_healthy() == false || rc_get_throttle_percent() > 0) {
+        heading_led_on(0);
+        delay(250);
+        heading_led_off();
+        delay(250);
+
+        service_watchdog();
+        echo_diagnostics();
     }
+}
+
+// Dumps diagnostics over USB serial.
+static void echo_diagnostics() {
+    Serial.print("Raw Accel G: ");
+    Serial.print(get_accel_force_g());
+    Serial.print("  RC Health: ");
+    Serial.print(rc_signal_is_healthy());
+    Serial.print("  RC Throttle: ");
+    Serial.print(rc_get_throttle_percent());
+    Serial.print("  RC L/R: ");
+    Serial.print(rc_get_leftright());
+    Serial.print("  RC F/B: ");
+    Serial.print(rc_get_forback());
+    Serial.println("");
+}
+
+// Used to flash out max recorded RPM in hundreds.
+static void display_rpm_if_requested() {
+    if (rc_get_forback() == RC_FORBACK_FORWARD) {
+        delay(750);
+        if (rc_get_forback() == RC_FORBACK_FORWARD && rc_get_throttle_percent() == 0) {
+            for (int x = 0; x < get_max_rpm() && rc_get_throttle_percent() == 0; x = x + 100) {
+                service_watchdog();
+                delay(600);
+                heading_led_on(0);
+                delay(20);
+                heading_led_off();
+            }
+            delay(1500);
+        }
+    }
+}
+
+// Checks if user has requested config mode.
+static void check_config_mode() {
+    if (rc_get_forback() == RC_FORBACK_BACKWARD) {
+        delay(750);
+        if (rc_get_forback() == RC_FORBACK_BACKWARD) {
+            toggle_config_mode();
+            if (get_config_mode() == false) {
+                save_melty_config_settings();
+            }
+
+            while (rc_get_forback() == RC_FORBACK_BACKWARD) {
+                service_watchdog();
+            }
+        }
+    }
+}
+
+// Handles the bot when not spinning.
+static void handle_bot_idle() {
+    motors_off();
+
+    heading_led_on(0);
+    delay(30);
+    heading_led_off();
+    delay(120);
+
+    if (get_config_mode() == true) {
+        heading_led_off();
+        delay(400);
+        heading_led_on(0);
+        delay(30);
+        heading_led_off();
+        delay(140);
+    }
+
+    check_config_mode();
+    display_rpm_if_requested();
+    echo_diagnostics();
 }
 
 void setup() {
     Serial.begin(115200);
 
-    pinMode(CHAN_1, INPUT);
-    pinMode(CHAN_2, INPUT);
-    pinMode(CHAN_3, INPUT);
-    pinMode(CHAN_4, INPUT);
-    pinMode(MOTOR_1, OUTPUT);
-    pinMode(MOTOR_2, OUTPUT);
-    digitalWrite(MOTOR_1, LOW);
-    digitalWrite(MOTOR_2, LOW);
+    init_motors();
+    init_led();
 
-    attachInterrupt(digitalPinToInterrupt(CHAN_3), handleInterrupt, CHANGE);
+#ifdef ENABLE_WATCHDOG
+    Watchdog.enable(WATCH_DOG_TIMEOUT_MS);
+#endif
+
+    init_rc();
+    init_accel();
+
+#ifdef VERIFY_RC_THROTTLE_ZERO_AT_BOOT
+    wait_for_rc_good_and_zero_throttle();
+    delay(MAX_MS_BETWEEN_RC_UPDATES + 1);
+    wait_for_rc_good_and_zero_throttle();
+#endif
 }
 
 void loop() {
-    static uint32_t lastPrint = 0;
-    uint32_t localPulse = NEUTRAL_US;
-    uint32_t localLastPulseMicros = 0;
+    service_watchdog();
 
-    // Print at ~20Hz to avoid spamming serial
-    if (newPulse && millis() - lastPrint > 50) {
-        Serial.print("PWM: ");
-        Serial.println(pulseWidth);
-        lastPrint = millis();
-        newPulse = false;
+    while (rc_signal_is_healthy() == false) {
+        motors_off();
+
+        heading_led_on(0);
+        delay(30);
+        heading_led_off();
+        delay(600);
+
+        service_watchdog();
+        echo_diagnostics();
     }
 
-    // Snapshot shared values safely
-    noInterrupts();
-    localPulse = pulseWidth;
-    localLastPulseMicros = lastPulseMicros;
-    interrupts();
-
-    // Clamp pulse to a safe range
-    if (localPulse < MIN_US) localPulse = MIN_US;
-    if (localPulse > MAX_US) localPulse = MAX_US;
-
-    // Failsafe to neutral if input signal is lost
-    if (micros() - localLastPulseMicros > FAILSAFE_TIMEOUT_US) {
-        localPulse = FAILSAFE_US;
+    if (rc_get_throttle_percent() > 0) {
+        spin_one_rotation();
+    } else {
+        handle_bot_idle();
     }
-
-    // Generate PWM output (50Hz frame)
-    digitalWrite(MOTOR_1, HIGH);
-    delayMicroseconds(localPulse);
-    digitalWrite(MOTOR_1, LOW);
-
-    delayMicroseconds(20000 - localPulse); // complete 20ms period
 }
