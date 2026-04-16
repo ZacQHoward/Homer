@@ -75,8 +75,8 @@ static float get_rotation_interval_ms(int steering_disabled) {
   
   float radius_adjustment_factor = 0;
 
-  //don't adjust steering if disabled by config mode - or we are in RC deadzone
-  if (steering_disabled == 0 && rc_get_is_lr_in_normal_deadzone() == false) {
+  //don't adjust steering if disabled by config mode
+  if (steering_disabled == 0) {
     radius_adjustment_factor = (float)(rc_get_leftright() / (float)NOMINAL_PULSE_RANGE) / LEFT_RIGHT_HEADING_CONTROL_DIVISOR;
   }
   
@@ -109,17 +109,14 @@ static struct melty_parameters_t handle_config_mode(struct melty_parameters_t me
     //radius adjustment overrides steering
     melty_parameters.steering_disabled = 1;
 
-    //only adjust if stick is outside deadzone    
-    if (rc_get_is_lr_in_config_deadzone() == false) {
-      //show that we are changing config
-      melty_parameters.led_shimmer = 1;
+    //show that we are changing config
+    melty_parameters.led_shimmer = 1;
 
-      float adjustment_factor = (accel_mount_radius_cm * (float)(rc_get_leftright() / (float)NOMINAL_PULSE_RANGE));
-      adjustment_factor = adjustment_factor / LEFT_RIGHT_CONFIG_RADIUS_ADJUST_DIVISOR;
-      accel_mount_radius_cm = accel_mount_radius_cm + adjustment_factor;
+    float adjustment_factor = (accel_mount_radius_cm * (float)(rc_get_leftright() / (float)NOMINAL_PULSE_RANGE));
+    adjustment_factor = adjustment_factor / LEFT_RIGHT_CONFIG_RADIUS_ADJUST_DIVISOR;
+    accel_mount_radius_cm = accel_mount_radius_cm + adjustment_factor;
 
-      if (accel_mount_radius_cm < ACCEL_MOUNT_RADIUS_MINIMUM_CM) accel_mount_radius_cm = ACCEL_MOUNT_RADIUS_MINIMUM_CM;
-    }    
+    if (accel_mount_radius_cm < ACCEL_MOUNT_RADIUS_MINIMUM_CM) accel_mount_radius_cm = ACCEL_MOUNT_RADIUS_MINIMUM_CM;
   }
   
   //if forback backward - do LED heading adjustment (don't translate)
@@ -128,23 +125,18 @@ static struct melty_parameters_t handle_config_mode(struct melty_parameters_t me
     //LED heading offset adjustment overrides steering
     melty_parameters.steering_disabled = 1;
     
-    //only adjust if stick is outside deadzone  
-    if (rc_get_is_lr_in_config_deadzone() == false) {
+    //disable translation if adjusting heading
+    melty_parameters.translate_forback = RC_FORBACK_NEUTRAL;
 
-      //disable translation if adjusting heading
-      melty_parameters.translate_forback = RC_FORBACK_NEUTRAL;
+    //show that we are changing config
+    melty_parameters.led_shimmer = 1;
 
-      //show that we are changing config
-      melty_parameters.led_shimmer = 1;
+    float adjustment_factor =  (float)(rc_get_leftright() / (float)NOMINAL_PULSE_RANGE);
+    adjustment_factor = adjustment_factor / LEFT_RIGHT_CONFIG_LED_ADJUST_DIVISOR;
+    led_offset_percent = led_offset_percent + adjustment_factor;
 
-      float adjustment_factor =  (float)(rc_get_leftright() / (float)NOMINAL_PULSE_RANGE);
-      adjustment_factor = adjustment_factor / LEFT_RIGHT_CONFIG_LED_ADJUST_DIVISOR;
-      led_offset_percent = led_offset_percent + adjustment_factor;
-
-      if (led_offset_percent > 99) led_offset_percent = 0;
-      if (led_offset_percent < 0) led_offset_percent = 99;
-
-    }
+    if (led_offset_percent > 99) led_offset_percent = 0;
+    if (led_offset_percent < 0) led_offset_percent = 99;
   }    
   return melty_parameters;  
 }

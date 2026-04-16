@@ -1,163 +1,168 @@
-//This module handles the RC interface (interrupt driven)
-
-#include "rc_handler.h"
 #include <Arduino.h>
+
 #include "melty_config.h"
+#include "rc_handler.h"
 
-#define RC_DATA_UNLOCKED 0
-#define RC_DATA_LOCKED 1 
-
-static int rc_data_lock_state = RC_DATA_UNLOCKED;
-
-//config / current values for each RC channel
-struct rc_channel_t {
-  int pin;                        //pin channel is connected to
-  unsigned long pulse_length;     //most recent pulse length in us
-  unsigned long pulse_start_time; //time stamp of when RC pin last went high
-  unsigned long last_good_signal; //time stamp (MS) of when last pulse of valid length was received
+struct rc_channel_state_t {
+  uint8_t pin;
+  volatile uint32_t rise_time_us;
+  volatile uint32_t pulse_width_us;
+  volatile uint32_t last_pulse_us;
 };
 
-static struct rc_channel_t forback_rc_channel = {
-  .pin = FORBACK_RC_CHANNEL_PIN,
-  .pulse_length = MIN_RC_PULSE_LENGTH,
-  .pulse_start_time = 0,
-  .last_good_signal = 0
-};
+static rc_channel_state_t channel_1 = {LEFTRIGHT_RC_CHANNEL_PIN, 0, RC_NEUTRAL_US, 0};
+static rc_channel_state_t channel_2 = {FORBACK_RC_CHANNEL_PIN, 0, RC_NEUTRAL_US, 0};
+static rc_channel_state_t channel_3 = {THROTTLE_RC_CHANNEL_PIN, 0, RC_NEUTRAL_US, 0};
+static rc_channel_state_t channel_4 = {ORIENTATION_RC_CHANNEL_PIN, 0, RC_NEUTRAL_US, 0};
 
-static struct rc_channel_t leftright_rc_channel = {
-  .pin = LEFTRIGHT_RC_CHANNEL_PIN,
-  .pulse_length = MIN_RC_PULSE_LENGTH,
-  .pulse_start_time = 0,
-  .last_good_signal = 0
-};
-
-static struct rc_channel_t throttle_rc_channel = {
-  .pin = THROTTLE_RC_CHANNEL_PIN,
-  .pulse_length = MIN_RC_PULSE_LENGTH,
-  .pulse_start_time = 0,
-  .last_good_signal = 0
-};
-
-//prevent RC data from changing when in use
-static void lock_rc_data() {
-  rc_data_lock_state = RC_DATA_LOCKED;
-}
-
-static void unlock_rc_data() {
-  rc_data_lock_state = RC_DATA_UNLOCKED;
-}
-
-//updates RC channels with latest values
-static void update_rc_channel(struct rc_channel_t *rc_channel) {
-
-//if we are using the rc channel info - don't update it!
-
-  if (rc_data_lock_state == RC_DATA_LOCKED) return;
-  int rc_channel_current_state = digitalRead(rc_channel->pin);
-
-  //pulse started
-  if (rc_channel_current_state == 1) {
-    rc_channel->pulse_start_time = micros();
-  }
-
-  //pulse ended
-  if (rc_channel_current_state == 0) {
-    //only assign new value if micros() didn't overflow
-    //(overflow just causes single missed update)
-    if (micros() > rc_channel->pulse_start_time) {
-      //protect against missing end of pulse / triggering on next fall
-      unsigned long new_pulse_length = micros() - rc_channel->pulse_start_time;
-      if (new_pulse_length <= MAX_RC_PULSE_LENGTH && new_pulse_length >= MIN_RC_PULSE_LENGTH) {
-        rc_channel->pulse_length = new_pulse_length;
-        rc_channel->last_good_signal = millis();
+static inline void IRAM_ATTR handle_channel_interrupt(volatile rc_channel_state_t &channel) {
+  if (digitalRead(channel.pin) == HIGH) {
+    channel.rise_time_us = micros();
+  } else {
+    uint32_t now_us = micros();
+    if (now_us > channel.rise_time_us) {
+      uint32_t pulse_width_us = now_us - channel.rise_time_us;
+      if (pulse_width_us >= MIN_RC_PULSE_LENGTH && pulse_width_us <= MAX_RC_PULSE_LENGTH) {
+        channel.pulse_width_us = pulse_width_us;
+        channel.last_pulse_us = now_us;
       }
     }
   }
 }
 
-//verifies RC channels have returned values more
-//recent that MAX_MS_BETWEEN_RC_UPDATES
+void IRAM_ATTR handle_channel_1_interrupt() {
+  handle_channel_interrupt(channel_1);
+}
+
+void IRAM_ATTR handle_channel_2_interrupt() {
+  handle_channel_interrupt(channel_2);
+}
+
+void IRAM_ATTR handle_channel_3_interrupt() {
+  handle_channel_interrupt(channel_3);
+}
+
+void IRAM_ATTR handle_channel_4_interrupt() {
+  handle_channel_interrupt(channel_4);
+}
+
+static uint16_t read_channel_pulse_us(volatile rc_channel_state_t &channel) {
+  uint32_t pulse_width_us = RC_NEUTRAL_US;
+  uint32_t last_pulse_us = 0;
+
+  noInterrupts();
+  pulse_width_us = channel.pulse_width_us;
+  last_pulse_us = channel.last_pulse_us;
+  interrupts();
+
+  if (last_pulse_us == 0) {
+    return RC_NEUTRAL_US;
+  }
+
+  if (micros() - last_pulse_us > RC_TIMEOUT_US) {
+    return RC_NEUTRAL_US;
+  }
+
+  if (pulse_width_us < MIN_RC_PULSE_LENGTH) return MIN_RC_PULSE_LENGTH;
+  if (pulse_width_us > MAX_RC_PULSE_LENGTH) return MAX_RC_PULSE_LENGTH;
+  return (uint16_t)pulse_width_us;
+}
+
+static bool pulse_is_near(uint16_t pulse_width_us, uint16_t target_us) {
+  return pulse_width_us >= (target_us - RC_CONNECTION_TOLERANCE_US) &&
+         pulse_width_us <= (target_us + RC_CONNECTION_TOLERANCE_US);
+}
+
+static bool channel_has_recent_pulse(volatile rc_channel_state_t &channel) {
+  uint32_t last_pulse_us = 0;
+
+  noInterrupts();
+  last_pulse_us = channel.last_pulse_us;
+  interrupts();
+
+  if (last_pulse_us == 0) {
+    return false;
+  }
+
+  return (micros() - last_pulse_us) <= RC_TIMEOUT_US;
+}
+
+void init_rc() {
+  pinMode(channel_1.pin, INPUT);
+  pinMode(channel_2.pin, INPUT);
+  pinMode(channel_3.pin, INPUT);
+  pinMode(channel_4.pin, INPUT);
+
+  attachInterrupt(digitalPinToInterrupt(channel_1.pin), handle_channel_1_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(channel_2.pin), handle_channel_2_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(channel_3.pin), handle_channel_3_interrupt, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(channel_4.pin), handle_channel_4_interrupt, CHANGE);
+}
+
+bool controller_connected() {
+  uint16_t ch1 = rc_get_ch1_pulse_us();
+  uint16_t ch2 = rc_get_ch2_pulse_us();
+  uint16_t ch3 = rc_get_ch3_pulse_us();
+  uint16_t ch4 = rc_get_ch4_pulse_us();
+
+  return pulse_is_near(ch3, RC_NEUTRAL_US) &&
+         pulse_is_near(ch1, RC_CONNECTION_LOW_US) &&
+         pulse_is_near(ch2, RC_CONNECTION_LOW_US) &&
+         pulse_is_near(ch4, RC_CONNECTION_LOW_US);
+}
+
 bool rc_signal_is_healthy() {
-  
-  lock_rc_data();
-  unsigned long last_good_signal = throttle_rc_channel.last_good_signal;
-  unlock_rc_data();
-  
-  //initial signal not received
-  if (last_good_signal == 0) return false;
-
-  if (millis() - last_good_signal > MAX_MS_BETWEEN_RC_UPDATES) return false;
-  
-  return true;
+  return channel_has_recent_pulse(channel_1) &&
+         channel_has_recent_pulse(channel_2) &&
+         channel_has_recent_pulse(channel_3) &&
+         channel_has_recent_pulse(channel_4);
 }
 
-//returns at integer from 0 to 100 based on throttle position
-//default values are intended to have "dead zones" at both top
-//and bottom of stick for 0 and 100 percent
+uint16_t rc_get_channel_pulse_us(uint8_t channel) {
+  switch (channel) {
+    case 1:
+      return read_channel_pulse_us(channel_1);
+    case 2:
+      return read_channel_pulse_us(channel_2);
+    case 3:
+      return read_channel_pulse_us(channel_3);
+    case 4:
+      return read_channel_pulse_us(channel_4);
+    default:
+      return RC_NEUTRAL_US;
+  }
+}
+
+uint16_t rc_get_ch1_pulse_us() {
+  return rc_get_channel_pulse_us(1);
+}
+
+uint16_t rc_get_ch2_pulse_us() {
+  return rc_get_channel_pulse_us(2);
+}
+
+uint16_t rc_get_ch3_pulse_us() {
+  return rc_get_channel_pulse_us(3);
+}
+
+uint16_t rc_get_ch4_pulse_us() {
+  return rc_get_channel_pulse_us(4);
+}
+
 int rc_get_throttle_percent() {
-
-  lock_rc_data();
-  unsigned long pulse_length = throttle_rc_channel.pulse_length;
-  unlock_rc_data();
-
-  if (pulse_length >= FULL_THROTTLE_PULSE_LENGTH) return 100;
-  if (pulse_length <= IDLE_THROTTLE_PULSE_LENGTH) return 0;
-
-  long throttle_percent = (pulse_length - IDLE_THROTTLE_PULSE_LENGTH) * 100;
-  throttle_percent = throttle_percent / (FULL_THROTTLE_PULSE_LENGTH - IDLE_THROTTLE_PULSE_LENGTH);
-  return (int)throttle_percent;
+  uint16_t pulse_width_us = rc_get_ch3_pulse_us();
+  if (pulse_width_us <= RC_MIN_US) return 0;
+  if (pulse_width_us >= RC_MAX_US) return 100;
+  return (int)(((pulse_width_us - RC_MIN_US) * 100UL) / (RC_MAX_US - RC_MIN_US));
 }
 
-bool rc_get_is_lr_in_config_deadzone() {
-  if (abs(rc_get_leftright()) < LR_CONFIG_MODE_DEADZONE_WIDTH) return true;
-  return false;
-}
-
-bool rc_get_is_lr_in_normal_deadzone() {
-  if (abs(rc_get_leftright()) < LR_NORMAL_DEADZONE_WIDTH) return true;
-  return false;
-}
-
-
-//returns RC_FORBACK_FORWARD, RC_FORBACK_BACKWARD or RC_FORBACK_NEUTRAL based on stick position
 rc_forback rc_get_forback() {
-  
-  lock_rc_data();
-  unsigned long pulse_length = forback_rc_channel.pulse_length;
-  unlock_rc_data();
-
-  int rc_forback_offset = pulse_length - CENTER_FORBACK_PULSE_LENGTH;
-  if (rc_forback_offset > FORBACK_MIN_THRESH_PULSE_LENGTH) return RC_FORBACK_FORWARD;
-  if (rc_forback_offset < (FORBACK_MIN_THRESH_PULSE_LENGTH * -1)) return RC_FORBACK_BACKWARD;
+  uint16_t pulse_width_us = rc_get_ch2_pulse_us();
+  if (pulse_width_us > RC_NEUTRAL_US) return RC_FORBACK_FORWARD;
+  if (pulse_width_us < RC_NEUTRAL_US) return RC_FORBACK_BACKWARD;
   return RC_FORBACK_NEUTRAL;
 }
 
-//returns offset in microseconds from center value (not converted to percentage)
-//0 for hypothetical perfect center (reality is probably +/-50)
-//returns negative value for left / positive value for right
 int rc_get_leftright() {
-  
-  lock_rc_data();
-  unsigned long pulse_length = leftright_rc_channel.pulse_length;
-  unlock_rc_data();
-
-  return pulse_length - CENTER_LEFTRIGHT_PULSE_LENGTH;
-}
-
-//ISRs for each RC interrupt pin
-void forback_rc_change() {
-  update_rc_channel(&forback_rc_channel);
-}
-void leftright_rc_change() {
-  update_rc_channel(&leftright_rc_channel);
-}
-void throttle_rc_change() {
-  update_rc_channel(&throttle_rc_channel);
-}
-
-//attach interrupts to rc pins
-void init_rc(void) {
-  attachInterrupt(digitalPinToInterrupt(forback_rc_channel.pin), forback_rc_change, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(leftright_rc_channel.pin), leftright_rc_change, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(throttle_rc_channel.pin), throttle_rc_change, CHANGE);
+  return (int)rc_get_ch1_pulse_us() - (int)RC_NEUTRAL_US;
 }

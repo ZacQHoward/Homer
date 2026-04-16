@@ -1,47 +1,39 @@
+#ifndef HOMER_RC_HANDLER_H
+#define HOMER_RC_HANDLER_H
 
-//used to return forward / back control stick position
+#include <Arduino.h>
+
 typedef enum {
-    RC_FORBACK_FORWARD = 1,     //control stick pushed forward
-    RC_FORBACK_NEUTRAL = 0,     //control stick neutral
-    RC_FORBACK_BACKWARD = -1     //control stick held back
+  RC_FORBACK_FORWARD = 1,
+  RC_FORBACK_NEUTRAL = 0,
+  RC_FORBACK_BACKWARD = -1
 } rc_forback;
 
 void init_rc();
 
-bool rc_signal_is_healthy();           //return true if RC signal looks good
+bool controller_connected();
+bool rc_signal_is_healthy();
 
-int rc_get_throttle_percent();        //returns 0-100 value indicating throttle level
+uint16_t rc_get_channel_pulse_us(uint8_t channel);
+uint16_t rc_get_ch1_pulse_us();
+uint16_t rc_get_ch2_pulse_us();
+uint16_t rc_get_ch3_pulse_us();
+uint16_t rc_get_ch4_pulse_us();
 
-rc_forback rc_get_forback();          //returns RC_FORBACK_FORWARD, RC_FORBACK_NEUTRAL or RC_FORBACK_BACKWARD depending on stick position
-int rc_get_leftright();               //returns offset in microseconds from center value (not converted to percentage)
+int rc_get_throttle_percent();
+rc_forback rc_get_forback();
+int rc_get_leftright();
 
-//these functions return true if L/R stick movement is below defined thresholds
-bool rc_get_is_lr_in_config_deadzone();  
-bool rc_get_is_lr_in_normal_deadzone();
+#define RC_MIN_US 1000
+#define RC_NEUTRAL_US 1500
+#define RC_MAX_US 2000
+#define RC_TIMEOUT_US 100000
+#define RC_CONNECTION_TOLERANCE_US 5
+#define RC_CONNECTION_LOW_US 1100
 
-//All pulse lengths in microseconds
-//it's accepted that a TX with fully centered trims may produce values somewhat off these numbers
-
-//RC pulses outside this range are considered invalid (indicate a bad RC signal)
 #define MAX_RC_PULSE_LENGTH 2400
 #define MIN_RC_PULSE_LENGTH 700
-
-//This value reflects nominal range of possible RC pulse values (maximum - minimum)
-//This value is used to help scale left / right adjustment of heading
-//(does not need to be perfect)
 #define NOMINAL_PULSE_RANGE (MAX_RC_PULSE_LENGTH - MIN_RC_PULSE_LENGTH)
+#define MAX_MS_BETWEEN_RC_UPDATES 100
 
-#define IDLE_THROTTLE_PULSE_LENGTH 1250           //pulses below this value are considered 0% throttle
-#define FULL_THROTTLE_PULSE_LENGTH 1850           //pulses above this value are considered 100%
-#define CENTER_LEFTRIGHT_PULSE_LENGTH 1500        //center value for left / right
-#define CENTER_FORBACK_PULSE_LENGTH 1500          //center value for for / back
-
-#define FORBACK_MIN_THRESH_PULSE_LENGTH 100       //pulse length must differ by this much from CENTER_FORBACK_PULSE_LENGTH to be considered going forward or back
-
-#define LR_CONFIG_MODE_DEADZONE_WIDTH 100         //deadzone for LR when in config mode (in US) - prevents unintended tracking adjustments
-#define LR_NORMAL_DEADZONE_WIDTH 25               //deadzone for normal drive - can help with unintentional drift when moving forward / back
-
-#define MAX_MS_BETWEEN_RC_UPDATES 900             //if we don't get a valid RC update on the throttle at least this often - spin down
-
-
-
+#endif
