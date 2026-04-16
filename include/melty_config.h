@@ -50,8 +50,8 @@
 #define HEADING_LED_PIN	8                         //To heading LED (pin 13 is on-board Arduino LED)
 
 //no configuration changes are needed if only 1 motor is used!
-#define MOTOR_PIN1 9                              //Pin for Motor 1 driver
-#define MOTOR_PIN2 10                             //Pin for Motor 2 driver
+#define MOTOR_PIN1 D5                              //Pin for Motor 1 driver
+#define MOTOR_PIN2 D6                             //Pin for Motor 2 driver
 
 //----------THROTTLE CONFIGURATION----------
 //THROTTLE_TYPE / High-speed PWM motor driver support:

@@ -1,72 +1,57 @@
-//this module handles interfacing to the motors
-
 #include <Arduino.h>
+
 #include "melty_config.h"
 #include "motor_driver.h"
 
-//motor_X_on functions are used for the powered phase of each rotation
-//motor_X_coast functions are used for the unpowered phase of each rotation
-//motor_X_off functions are used for when the robot is spun-down
+static const uint16_t ESC_MIN_US = 1000;
+static const uint16_t ESC_NEUTRAL_US = 1500;
+static const uint16_t ESC_MAX_US = 2000;
 
-void motor_on(float throttle_percent, int motor_pin) {
+static const uint32_t ESC_FRAME_US = 20000;          // 20 ms = 50 Hz
+static const uint32_t ESC_PWM_FREQUENCY_HZ = 50;
+static const uint8_t ESC_PWM_RESOLUTION_BITS = 12;
+static const uint32_t ESC_PWM_MAX_DUTY = (1U << ESC_PWM_RESOLUTION_BITS) - 1U;
 
-  if (THROTTLE_TYPE == BINARY_THROTTLE) {
-    digitalWrite(motor_pin, HIGH);
-  }
+// Pick 2 LEDC channels
+static const uint8_t MOTOR_1_PWM_CHANNEL = 0;
+static const uint8_t MOTOR_2_PWM_CHANNEL = 1;
 
-  if (THROTTLE_TYPE == FIXED_PWM_THROTTLE) {
-    analogWrite(motor_pin, PWM_MOTOR_ON);
-  }
-
-//If DYNAMIC_PWM_THROTTLE - PWM is scaled between PWM_MOTOR_COAST and PWM_MOTOR_ON
-//Applies over range defined by DYNAMIC_PWM_THROTTLE_PERCENT_MAX - maxed at PWM_MOTOR_ON above this
-  if (THROTTLE_TYPE == DYNAMIC_PWM_THROTTLE) {
-    float throttle_pwm = PWM_MOTOR_COAST + ((throttle_percent / DYNAMIC_PWM_THROTTLE_PERCENT_MAX) * (PWM_MOTOR_ON - PWM_MOTOR_COAST));
-    if (throttle_pwm > PWM_MOTOR_ON) throttle_pwm = PWM_MOTOR_ON;
-    analogWrite(motor_pin, throttle_pwm);
-  }
+static uint16_t clamp_pulse_us(uint16_t pulse_width_us) {
+  if (pulse_width_us < ESC_MIN_US) return ESC_MIN_US;
+  if (pulse_width_us > ESC_MAX_US) return ESC_MAX_US;
+  return pulse_width_us;
 }
 
-void motor_1_on(float throttle_percent) {
-  motor_on(throttle_percent, MOTOR_PIN1);
+static uint32_t pulse_us_to_duty(uint16_t pulse_width_us) {
+  pulse_width_us = clamp_pulse_us(pulse_width_us);
+
+  // duty = pulse_width / frame_width * max_duty
+  // Example at 12-bit:
+  // 1000 us -> about 205
+  // 1500 us -> about 307
+  // 2000 us -> about 410
+  return ((uint32_t)pulse_width_us * ESC_PWM_MAX_DUTY) / ESC_FRAME_US;
 }
 
-void motor_2_on(float throttle_percent) {
-  motor_on(throttle_percent, MOTOR_PIN2);
+static void motor_write_us(uint8_t pwm_channel, uint16_t pulse_width_us) {
+  uint32_t duty = pulse_us_to_duty(pulse_width_us);
+  ledcWrite(pwm_channel, duty);
 }
 
-void motor_coast(int motor_pin) {
-  if (THROTTLE_TYPE == FIXED_PWM_THROTTLE || THROTTLE_TYPE == DYNAMIC_PWM_THROTTLE) {
-    analogWrite(motor_pin, PWM_MOTOR_COAST);
-  }
-  if (THROTTLE_TYPE == BINARY_THROTTLE) {
-    digitalWrite(motor_pin, LOW);  //same as "off" for brushed motors
-  }
+void motor_1_write_us(uint16_t pulse_width_us) {
+  motor_write_us(MOTOR_1_PWM_CHANNEL, pulse_width_us);
 }
 
-void motor_1_coast() {
-  motor_coast(MOTOR_PIN1);
-}
-
-void motor_2_coast() {
-  motor_coast(MOTOR_PIN2);
-}
-
-void motor_off(int motor_pin) {
-  if (THROTTLE_TYPE == FIXED_PWM_THROTTLE || THROTTLE_TYPE == DYNAMIC_PWM_THROTTLE) {
-    analogWrite(motor_pin, PWM_MOTOR_OFF);
-  }
-  if (THROTTLE_TYPE == BINARY_THROTTLE) {
-    digitalWrite(motor_pin, LOW);  //same as "off" for brushed motors
-  }
+void motor_2_write_us(uint16_t pulse_width_us) {
+  motor_write_us(MOTOR_2_PWM_CHANNEL, pulse_width_us);
 }
 
 void motor_1_off() {
-  motor_off(MOTOR_PIN1);
+  motor_1_write_us(ESC_NEUTRAL_US);
 }
 
 void motor_2_off() {
-  motor_off(MOTOR_PIN2);
+  motor_2_write_us(ESC_NEUTRAL_US);
 }
 
 void motors_off() {
@@ -75,7 +60,13 @@ void motors_off() {
 }
 
 void init_motors() {
-  pinMode(MOTOR_PIN1, OUTPUT);
-  pinMode(MOTOR_PIN2, OUTPUT);
+  // Configure PWM channels
+  ledcSetup(MOTOR_1_PWM_CHANNEL, ESC_PWM_FREQUENCY_HZ, ESC_PWM_RESOLUTION_BITS);
+  ledcSetup(MOTOR_2_PWM_CHANNEL, ESC_PWM_FREQUENCY_HZ, ESC_PWM_RESOLUTION_BITS);
+
+  // Attach pins from melty_config.h
+  ledcAttachPin(MOTOR_PIN1, MOTOR_1_PWM_CHANNEL);
+  ledcAttachPin(MOTOR_PIN2, MOTOR_2_PWM_CHANNEL);
+
   motors_off();
 }

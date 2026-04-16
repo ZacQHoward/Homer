@@ -52,7 +52,7 @@ void loop() {
         data.ch2_us = rc_get_ch2_pulse_us();
         data.ch3_us = rc_get_ch3_pulse_us();
         data.ch4_us = rc_get_ch4_pulse_us();
-        data.controller_connected = controller_connected();
+        data.controller_connected = rc_signal_is_healthy();
         data.rc_healthy = rc_signal_is_healthy();
         wifi_dashboard_set_data(data);
         float current_zeroed_g = data.zeroed_g;
@@ -77,7 +77,7 @@ void loop() {
         uint16_t ch2 = rc_get_ch2_pulse_us();
         uint16_t ch3 = rc_get_ch3_pulse_us();
         uint16_t ch4 = rc_get_ch4_pulse_us();
-        bool rc_connected = controller_connected();
+        bool rc_connected = rc_signal_is_healthy();
         bool rc_healthy = rc_signal_is_healthy();
 #endif
 

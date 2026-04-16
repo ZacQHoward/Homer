@@ -1,150 +1,76 @@
-// Open Melt controller entry point, trimmed for a PlatformIO project.
-// EEPROM and battery monitoring are disabled for the first XIAO ESP32C3 port.
-
 #include <Arduino.h>
 
-#include "rc_handler.h"
+#include "accel_handler.h"
 #include "melty_config.h"
 #include "motor_driver.h"
-#include "accel_handler.h"
+#include "rc_handler.h"
 #include "spin_control.h"
-#include "led_driver.h"
 
-#ifdef ENABLE_WATCHDOG
-#include <Adafruit_SleepyDog.h>
-#endif
+static uint16_t read_ch1() { return rc_get_ch1_pulse_us(); }
+static uint16_t read_ch2() { return rc_get_ch2_pulse_us(); }
+static uint16_t read_ch3() { return rc_get_ch3_pulse_us(); }
+static uint16_t read_ch4() { return rc_get_ch4_pulse_us(); }
 
-static void echo_diagnostics();
-
-static void service_watchdog() {
-#ifdef ENABLE_WATCHDOG
-    Watchdog.reset();
-#endif
+static bool throttle_is_active() {
+  uint16_t ch3 = read_ch3();
+  return ch3 <= 1490 || ch3 >= 1510;
 }
 
-// Loops until a good RC signal is detected and throttle is zero.
-static void wait_for_rc_good_and_zero_throttle() {
-    while (rc_signal_is_healthy() == false || rc_get_throttle_percent() > 0) {
-        heading_led_on(0);
-        delay(250);
-        heading_led_off();
-        delay(250);
-
-        service_watchdog();
-        echo_diagnostics();
-    }
-}
-
-// Dumps diagnostics over USB serial.
 static void echo_diagnostics() {
-    Serial.print("Raw Accel G: ");
-    Serial.print(get_accel_force_g());
-    Serial.print("  RC Health: ");
-    Serial.print(rc_signal_is_healthy());
-    Serial.print("  RC Throttle: ");
-    Serial.print(rc_get_throttle_percent());
-    Serial.print("  RC L/R: ");
-    Serial.print(rc_get_leftright());
-    Serial.print("  RC F/B: ");
-    Serial.print(rc_get_forback());
-    Serial.println("");
+  Serial.print("Raw Accel G: ");
+  Serial.print(get_accel_force_g(), 4);
+  Serial.print("  RC Health: ");
+  Serial.print(rc_signal_is_healthy());
+  Serial.print("  CH1: ");
+  Serial.print(read_ch1());
+  Serial.print("  CH2: ");
+  Serial.print(read_ch2());
+  Serial.print("  CH3: ");
+  Serial.print(read_ch3());
+  Serial.print("  CH4: ");
+  Serial.print(read_ch4());
+  Serial.print("  Max RPM: ");
+  Serial.print(get_max_rpm());
+  Serial.println();
 }
 
-// Used to flash out max recorded RPM in hundreds.
-static void display_rpm_if_requested() {
-    if (rc_get_forback() == RC_FORBACK_FORWARD) {
-        delay(750);
-        if (rc_get_forback() == RC_FORBACK_FORWARD && rc_get_throttle_percent() == 0) {
-            for (int x = 0; x < get_max_rpm() && rc_get_throttle_percent() == 0; x = x + 100) {
-                service_watchdog();
-                delay(600);
-                heading_led_on(0);
-                delay(20);
-                heading_led_off();
-            }
-            delay(1500);
-        }
-    }
-}
-
-// Checks if user has requested config mode.
-static void check_config_mode() {
-    if (rc_get_forback() == RC_FORBACK_BACKWARD) {
-        delay(750);
-        if (rc_get_forback() == RC_FORBACK_BACKWARD) {
-            toggle_config_mode();
-            if (get_config_mode() == false) {
-                save_melty_config_settings();
-            }
-
-            while (rc_get_forback() == RC_FORBACK_BACKWARD) {
-                service_watchdog();
-            }
-        }
-    }
-}
-
-// Handles the bot when not spinning.
-static void handle_bot_idle() {
+static void wait_for_rc_and_neutral_throttle() {
+  while (!rc_signal_is_healthy() || throttle_is_active()) {
     motors_off();
-
-    heading_led_on(0);
-    delay(30);
-    heading_led_off();
-    delay(120);
-
-    if (get_config_mode() == true) {
-        heading_led_off();
-        delay(400);
-        heading_led_on(0);
-        delay(30);
-        heading_led_off();
-        delay(140);
-    }
-
-    check_config_mode();
-    display_rpm_if_requested();
+    delay(300);
     echo_diagnostics();
+  }
+}
+
+static void handle_idle() {
+  motors_off();
+  delay(150);
+  echo_diagnostics();
 }
 
 void setup() {
-    Serial.begin(115200);
+  Serial.begin(115200);
 
-    init_motors();
-    init_led();
-
-#ifdef ENABLE_WATCHDOG
-    Watchdog.enable(WATCH_DOG_TIMEOUT_MS);
-#endif
-
-    init_rc();
-    init_accel();
+  init_motors();
+  init_rc();
+  init_accel();
 
 #ifdef VERIFY_RC_THROTTLE_ZERO_AT_BOOT
-    wait_for_rc_good_and_zero_throttle();
-    delay(MAX_MS_BETWEEN_RC_UPDATES + 1);
-    wait_for_rc_good_and_zero_throttle();
+  wait_for_rc_and_neutral_throttle();
 #endif
 }
 
 void loop() {
-    service_watchdog();
+  if (!rc_signal_is_healthy()) {
+    motors_off();
+    delay(300);
+    echo_diagnostics();
+    return;
+  }
 
-    while (rc_signal_is_healthy() == false) {
-        motors_off();
-
-        heading_led_on(0);
-        delay(30);
-        heading_led_off();
-        delay(600);
-
-        service_watchdog();
-        echo_diagnostics();
-    }
-
-    if (rc_get_throttle_percent() > 0) {
-        spin_one_rotation();
-    } else {
-        handle_bot_idle();
-    }
+  if (throttle_is_active()) {
+    spin_one_rotation();
+  } else {
+    handle_idle();
+  }
 }
