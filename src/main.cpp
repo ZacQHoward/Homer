@@ -12,8 +12,8 @@ static uint16_t read_ch3() { return rc_get_ch3_pulse_us(); }
 static uint16_t read_ch4() { return rc_get_ch4_pulse_us(); }
 
 static bool throttle_is_active() {
-  uint16_t ch3 = read_ch3();
-  return ch3 <= 1490 || ch3 >= 1510;
+  int centered = (int)read_ch3() - (int)RC_NEUTRAL_US;
+  return abs(centered) > 10;
 }
 
 static void echo_diagnostics() {

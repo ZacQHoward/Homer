@@ -31,6 +31,10 @@
 
 #define MIN_TRANSLATION_RPM 400                   //full power spin in below this number (increasing can reduce spin-up time)
 
+// Base spin command is limited below full ESC range so translation modulation
+// still has headroom at high throttle.
+#define BASE_SPIN_MAX_US 1800
+
 
 //----------PIN MAPPINGS----------
 //RC pins must be Arduino interrupt pins
