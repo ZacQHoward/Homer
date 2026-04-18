@@ -33,7 +33,7 @@
 
 // Base spin command is limited below full ESC range so translation modulation
 // still has headroom at high throttle.
-#define BASE_SPIN_MAX_US 1800
+#define BASE_SPIN_MAX_US 1700
 
 // Clamp CH1/CH2 before translation math so full stick does not request full ESC range.
 #define TRANSLATION_INPUT_MAX_US 1900
@@ -54,11 +54,20 @@
 #define THROTTLE_RC_CHANNEL_PIN D9                //To CH3 on RC receiver
 #define ORIENTATION_RC_CHANNEL_PIN D10            //To CH4 / orientation trim on RC receiver
 
-#define HEADING_LED_PIN	8                         //To heading LED (pin 13 is on-board Arduino LED)
+#define HEADING_LED_PIN D2                         //Heading flash LED
 
 //no configuration changes are needed if only 1 motor is used!
 #define MOTOR_PIN1 D5                              //Pin for Motor 1 driver
 #define MOTOR_PIN2 D6                             //Pin for Motor 2 driver
+
+// Piecewise diff-drive response curve.
+// Input still uses the full RC-style 1000..2000 range, but motor output is compressed
+// into DRIVE_OUTPUT_MIN_US..DRIVE_OUTPUT_MAX_US. The slow-band input bounds keep the
+// same relative position within that compressed output range.
+#define DRIVE_OUTPUT_MIN_US 1150
+#define DRIVE_OUTPUT_MAX_US 1850
+#define DRIVE_SLOW_INPUT_MIN_US 1200
+#define DRIVE_SLOW_INPUT_MAX_US 1800
 
 //----------THROTTLE CONFIGURATION----------
 //THROTTLE_TYPE / High-speed PWM motor driver support:

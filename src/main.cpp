@@ -1,6 +1,5 @@
 #include <Arduino.h>
 
-#include "accel_handler.h"
 #include "melty_config.h"
 #include "motor_driver.h"
 #include "rc_handler.h"
@@ -12,13 +11,12 @@ static uint16_t read_ch3() { return rc_get_ch3_pulse_us(); }
 static uint16_t read_ch4() { return rc_get_ch4_pulse_us(); }
 
 static bool throttle_is_active() {
-  int centered = (int)read_ch3() - (int)RC_NEUTRAL_US;
-  return abs(centered) > 10;
+  int ch3_centered = (int)read_ch3() - (int)RC_NEUTRAL_US;
+  int ch2_centered = (int)read_ch2() - (int)RC_NEUTRAL_US;
+  return abs(ch3_centered) > 10 || abs(ch2_centered) > 10;
 }
 
 static void echo_diagnostics() {
-  Serial.print("Raw Accel G: ");
-  Serial.print(get_accel_force_g(), 4);
   Serial.print("  RC Health: ");
   Serial.print(rc_signal_is_healthy());
   Serial.print("  CH1: ");
@@ -51,9 +49,11 @@ static void handle_idle() {
 void setup() {
   Serial.begin(115200);
 
+  pinMode(HEADING_LED_PIN, OUTPUT);
+  digitalWrite(HEADING_LED_PIN, HIGH);
+
   init_motors();
   init_rc();
-  init_accel();
 
 #ifdef VERIFY_RC_THROTTLE_ZERO_AT_BOOT
   wait_for_rc_and_neutral_throttle();
