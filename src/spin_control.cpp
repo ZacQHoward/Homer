@@ -14,6 +14,9 @@ static const uint16_t BASE_SPIN_MAX_OFFSET_US = BASE_SPIN_MAX_US - ESC_NEUTRAL_U
 
 static const uint16_t RC_CENTER_US = 1500;
 static const uint16_t RC_MAX_OFFSET_US = 500;
+static const uint16_t TRANSLATION_INPUT_MAX_OFFSET_US = TRANSLATION_INPUT_MAX_US - RC_CENTER_US;
+static const uint16_t TRANSLATION_BOOST_MAX_US =
+    TRANSLATION_INPUT_MAX_OFFSET_US - BASE_SPIN_MAX_OFFSET_US;
 static const uint16_t THROTTLE_DEADBAND_US = 10;
 static const uint16_t TRANSLATION_DEADBAND_US = 5;
 static const uint16_t TRIM_DEADBAND_US = 10;
@@ -46,6 +49,13 @@ static int get_centered_channel_us(uint16_t pulse_width_us) {
   int centered = (int)pulse_width_us - (int)RC_CENTER_US;
   if (centered > (int)RC_MAX_OFFSET_US) return RC_MAX_OFFSET_US;
   if (centered < -(int)RC_MAX_OFFSET_US) return -(int)RC_MAX_OFFSET_US;
+  return centered;
+}
+
+static int get_limited_translation_channel_us(uint16_t pulse_width_us) {
+  int centered = get_centered_channel_us(pulse_width_us);
+  if (centered > (int)TRANSLATION_INPUT_MAX_OFFSET_US) return TRANSLATION_INPUT_MAX_OFFSET_US;
+  if (centered < -((int)TRANSLATION_INPUT_MAX_OFFSET_US)) return -((int)TRANSLATION_INPUT_MAX_OFFSET_US);
   return centered;
 }
 
@@ -90,16 +100,16 @@ static int compute_base_spin_offset_us(float spin_magnitude_fraction) {
 }
 
 static translation_vector_t compute_translation_vector() {
-  int centered_x = apply_deadband(get_centered_channel_us(rc_get_ch1_pulse_us()), TRANSLATION_DEADBAND_US);
-  int centered_y = apply_deadband(get_centered_channel_us(rc_get_ch2_pulse_us()), TRANSLATION_DEADBAND_US);
+  int centered_x = apply_deadband(get_limited_translation_channel_us(rc_get_ch1_pulse_us()), TRANSLATION_DEADBAND_US);
+  int centered_y = apply_deadband(get_limited_translation_channel_us(rc_get_ch2_pulse_us()), TRANSLATION_DEADBAND_US);
 
   translation_vector_t result = {};
   if (centered_x == 0 && centered_y == 0) {
     return result;
   }
 
-  float normalized_x = (float)centered_x / (float)RC_MAX_OFFSET_US;
-  float normalized_y = (float)centered_y / (float)RC_MAX_OFFSET_US;
+  float normalized_x = (float)centered_x / (float)TRANSLATION_INPUT_MAX_OFFSET_US;
+  float normalized_y = (float)centered_y / (float)TRANSLATION_INPUT_MAX_OFFSET_US;
 
   result.magnitude = sqrtf((normalized_x * normalized_x) + (normalized_y * normalized_y));
   if (result.magnitude > 1.0f) {
@@ -169,14 +179,15 @@ static bool is_in_translation_half_cycle(float current_phase_fraction,
   return delta < 0.5f;
 }
 
-static int compute_available_translation_us(int signed_base_offset_us) {
-  int positive_headroom = ESC_MAX_US - (ESC_NEUTRAL_US + signed_base_offset_us);
-  int negative_headroom = (ESC_NEUTRAL_US + signed_base_offset_us) - ESC_MIN_US;
-  int available = positive_headroom < negative_headroom ? positive_headroom : negative_headroom;
-  if (available < 0) {
+static int compute_translation_boost_us(float translation_magnitude) {
+  int boost_us = (int)(translation_magnitude * (float)TRANSLATION_BOOST_MAX_US);
+  if (boost_us < 0) {
     return 0;
   }
-  return available;
+  if (boost_us > (int)TRANSLATION_BOOST_MAX_US) {
+    return TRANSLATION_BOOST_MAX_US;
+  }
+  return boost_us;
 }
 
 static void handle_translation(float rotation_interval_us,
@@ -189,7 +200,10 @@ static void handle_translation(float rotation_interval_us,
   unsigned long elapsed_us = 0;
 
   int signed_base_offset_us = (spin_direction >= 0.0f) ? base_spin_offset_us : -base_spin_offset_us;
-  int translation_bias_us = (int)(translation_magnitude * (float)compute_available_translation_us(signed_base_offset_us));
+  int translation_boost_us = compute_translation_boost_us(translation_magnitude);
+  int signed_translation_boost_us = (signed_base_offset_us >= 0)
+      ? translation_boost_us
+      : -translation_boost_us;
 
   while (elapsed_us < rotation_us) {
     float current_phase_fraction = (rotation_us == 0) ? 0.0f : ((float)elapsed_us / (float)rotation_us);
@@ -198,13 +212,11 @@ static void handle_translation(float rotation_interval_us,
     int motor_1_offset_us = signed_base_offset_us;
     int motor_2_offset_us = signed_base_offset_us;
 
-    if (translation_bias_us > 0) {
+    if (signed_translation_boost_us != 0) {
       if (first_half_cycle) {
-        motor_1_offset_us -= translation_bias_us;
-        motor_2_offset_us += translation_bias_us;
+        motor_1_offset_us += signed_translation_boost_us;
       } else {
-        motor_1_offset_us += translation_bias_us;
-        motor_2_offset_us -= translation_bias_us;
+        motor_2_offset_us += signed_translation_boost_us;
       }
     }
 
@@ -217,6 +229,12 @@ static void handle_translation(float rotation_interval_us,
 
 int get_max_rpm() {
   return highest_rpm;
+}
+
+void drive_both_motors_from_ch3() {
+  uint16_t ch3_us = rc_get_ch3_pulse_us();
+  motor_1_write_us(clamp_esc_us((int)ch3_us));
+  motor_2_write_us(clamp_esc_us((int)ch3_us));
 }
 
 void spin_one_rotation() {

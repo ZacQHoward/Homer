@@ -70,6 +70,8 @@ void loop() {
 
   if (throttle_is_active()) {
     spin_one_rotation();
+    // drive_both_motors_from_ch3();
+    echo_diagnostics();
   } else {
     handle_idle();
   }

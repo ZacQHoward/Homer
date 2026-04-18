@@ -35,6 +35,9 @@
 // still has headroom at high throttle.
 #define BASE_SPIN_MAX_US 1800
 
+// Clamp CH1/CH2 before translation math so full stick does not request full ESC range.
+#define TRANSLATION_INPUT_MAX_US 1900
+
 
 //----------PIN MAPPINGS----------
 //RC pins must be Arduino interrupt pins
