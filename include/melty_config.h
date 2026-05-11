@@ -43,8 +43,17 @@
 //CH1 = left/right, CH2 = forward/back, CH3 = throttle, CH4 = trim/orientation bump
 //Note: Accelerometer is connected with default Arduino SDA / SCL pins
 
-#define ACCLOCK  D0
-#define ACCATA D1
+// Change pins to this new circuit mapping:
+// D0 is motor 1 (right motor if weapon facing forward, yellow wire solo pin in mr30)
+// D1 is motor 2 (left motor if weapon facing forward, red wire solo pin in mr30)
+// D2 is SCL on accelerometer (clock)
+// D3 is SDA on accelerometer (data)
+// D4 is RGB LED red (heading LED)
+// D5 is RGB LED green (heading LED)
+// D6 is RGB LED blue (heading LED)
+
+#define ACCLOCK  D2
+#define ACCATA D3
 
 #define LEFTRIGHT_RC_CHANNEL_PIN D7               //To CH1 on RC receiver
 #define FORBACK_RC_CHANNEL_PIN D8                 //To CH2 on RC receiver
@@ -54,8 +63,8 @@
 #define HEADING_LED_PIN	8                         //To heading LED (pin 13 is on-board Arduino LED)
 
 //no configuration changes are needed if only 1 motor is used!
-#define MOTOR_PIN1 D5                              //Pin for Motor 1 driver
-#define MOTOR_PIN2 D6                             //Pin for Motor 2 driver
+#define MOTOR_PIN1 D0                              //Pin for Motor 1 driver
+#define MOTOR_PIN2 D1                             //Pin for Motor 2 driver
 
 //----------THROTTLE CONFIGURATION----------
 //THROTTLE_TYPE / High-speed PWM motor driver support:
