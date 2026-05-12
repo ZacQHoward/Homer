@@ -1,24 +1,28 @@
-#ifndef HOMER_RC_HANDLER_H
-#define HOMER_RC_HANDLER_H
+#pragma once
 
 #include <Arduino.h>
 
+namespace RcConfig {
+
+    constexpr uint16_t RC_MIN_US = 1000;
+    constexpr uint16_t RC_NEUTRAL_US = 1500;
+    constexpr uint16_t RC_MAX_US = 2000;
+
+    constexpr uint16_t RC_ISR_MIN_US = 800;
+    constexpr uint16_t RC_ISR_MAX_US = 2200;
+
+    constexpr uint32_t RC_SIGNAL_LOST_TIMEOUT_US = 100000;
+    constexpr uint16_t RC_DEADBAND_US = 10;
+
+}  // namespace RcConfig
+
+struct RcInput {
+    uint16_t ch1_us;
+    uint16_t ch2_us;
+    uint16_t ch3_us;
+    uint16_t ch4_us;
+    bool healthy;
+};
+
 void init_rc();
-
-bool rc_signal_is_healthy();
-
-uint16_t rc_get_channel_pulse_us(uint8_t channel);
-uint16_t rc_get_ch1_pulse_us();
-uint16_t rc_get_ch2_pulse_us();
-uint16_t rc_get_ch3_pulse_us();
-uint16_t rc_get_ch4_pulse_us();
-
-#define RC_MIN_US 1000
-#define RC_NEUTRAL_US 1500
-#define RC_MAX_US 2000
-#define RC_TIMEOUT_US 100000
-#define RC_CONNECTION_TOLERANCE_US 5
-#define RC_ISR_MIN_US 800
-#define RC_ISR_MAX_US 2200
-
-#endif
+RcInput read_rc_input();

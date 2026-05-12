@@ -1,6 +1,6 @@
 #include <Arduino.h>
 
-#include "melty_config.h"
+#include "homer_config.h"
 #include "motor_driver.h"
 
 static const uint16_t ESC_MIN_US = 1000;
@@ -64,9 +64,9 @@ void init_motors() {
   ledcSetup(MOTOR_1_PWM_CHANNEL, ESC_PWM_FREQUENCY_HZ, ESC_PWM_RESOLUTION_BITS);
   ledcSetup(MOTOR_2_PWM_CHANNEL, ESC_PWM_FREQUENCY_HZ, ESC_PWM_RESOLUTION_BITS);
 
-  // Attach pins from melty_config.h
-  ledcAttachPin(MOTOR_PIN1, MOTOR_1_PWM_CHANNEL);
-  ledcAttachPin(MOTOR_PIN2, MOTOR_2_PWM_CHANNEL);
+  // Attach pins from homer_config.h
+  ledcAttachPin(HomerConfig::MOTOR_PIN1, MOTOR_1_PWM_CHANNEL);
+  ledcAttachPin(HomerConfig::MOTOR_PIN2, MOTOR_2_PWM_CHANNEL);
 
   motors_off();
 }
