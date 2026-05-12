@@ -30,7 +30,7 @@ static void echo_diagnostics(const RcInput& input) {
 }
 
 static void handle_idle(const RcInput& input) {
-  motors_off();
+  motors_stop();
   delay(150);
   echo_diagnostics(input);
 }

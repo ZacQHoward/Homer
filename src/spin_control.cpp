@@ -222,7 +222,7 @@ void spin_one_rotation(const RcInput& input) {
   float spin_direction = get_spin_direction(input);
   float spin_magnitude = get_spin_magnitude_fraction(input);
   if (spin_direction == 0.0f || spin_magnitude <= 0.0f) {
-    motors_off();
+    motors_stop();
     return;
   }
   int base_spin_offset_us = compute_base_spin_offset_us(spin_magnitude);
