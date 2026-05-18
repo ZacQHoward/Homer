@@ -1,7 +1,32 @@
 #pragma once
-//Config file for Homer
+//Config file for Homer, contains all project namespaces in alphabetical order
 
 #include <Arduino.h>
+#include "SparkFun_LIS331.h"
+
+namespace AccelConfig {
+
+    //Set high enough to allow for G forces at top RPM
+    //LOW_RANGE - +/-100g for the H3LIS331DH
+    //MED_RANGE - +/-200g for the H3LIS331DH
+    //HIGH_RANGE - +/-400g for the H3LIS331DH
+    constexpr auto ACCEL_RANGE = LIS331::HIGH_RANGE;
+
+    constexpr int getAccelScale(uint8_t range) {
+        return (range == LIS331::LOW_RANGE)  ? 100 :
+               (range == LIS331::MED_RANGE)  ? 200 :
+               (range == LIS331::HIGH_RANGE) ? 400 :
+                                               400;
+    }
+    constexpr int ACCEL_MAX_SCALE = getAccelScale(ACCEL_RANGE);
+
+    //Adafuit breakout default is 0x18, Sparkfun default is 0x19
+    constexpr uint8_t ACCEL_I2C_ADDRESS = 0x19;
+
+    //Select which axis points toward the robot center (0 = X, 1 = Y, 2 = Z)
+    constexpr uint8_t ACCEL_FORCE_AXIS = 2;
+
+}  // namespace AccelConfig
 
 namespace HomerConfig {
 
@@ -32,3 +57,40 @@ namespace HomerConfig {
     constexpr uint8_t ORIENTATION_RC_CHANNEL_PIN = D10;     //Pin for CH4 / orientation trim on RC receiver
 
 }  // namespace HomerConfig
+
+namespace MotorConfig {
+
+    constexpr uint16_t ESC_MIN_US = 1000;      // Minimum pulse width for ESC (full reverse in microseconds)
+    constexpr uint16_t ESC_NEUTRAL_US = 1500;  // Neutral pulse width for ESC (stop in microseconds)
+    constexpr uint16_t ESC_MAX_US = 2000;      // Maximum pulse width for ESC (full forward in microseconds)
+
+    constexpr uint32_t ESC_PWM_FREQUENCY_HZ = 50;   // Increase for faster ESC command updates and potentially smoother response, Higher values may reduce compatibility with some ESCs
+    constexpr uint32_t ESC_FRAME_US = 1000000UL / ESC_PWM_FREQUENCY_HZ;  // Frame width in microseconds based on configured frequency (e.g. 20000 us for 50 Hz)
+    constexpr uint8_t ESC_PWM_RESOLUTION_BITS = 12; // PWM duty resolution, Higher values allow finer PWM pulse precision but very high resolutions may limit maximum achievable PWM frequency
+    constexpr uint32_t ESC_PWM_MAX_DUTY = (1UL << ESC_PWM_RESOLUTION_BITS) - 1UL;   // Maximum duty cycle value based on configured PWM resolution (e.g. 4095 for 12-bit resolution)
+
+    constexpr uint8_t MOTOR_1_PWM_CHANNEL = 0;  // LEDC channel slop
+    constexpr uint8_t MOTOR_2_PWM_CHANNEL = 1;  // LEDC channel slop
+
+}  // namespace MotorConfig
+
+namespace MovementConfig {
+
+    constexpr float THROTTLE_DEADZONE = 0.02f;      // Deadzone for channel ch3 (Throttle) to prevent noise around neutral from causing movement
+    constexpr float TRANS_VECTOR_DEADZONE = 0.02f;  // Deadzone for ch1 and ch2, corresponds to +/-10 us around neutral (10 us / 500 us)
+
+}  // namespace MovementConfig
+
+namespace RcConfig {
+
+    constexpr uint16_t RC_MIN_US = 1000;      // Minimum clamp value for RC input pulse width (in microseconds)
+    constexpr uint16_t RC_NEUTRAL_US = 1500;  // Neutral pulse width for RC input (in microseconds)
+    constexpr uint16_t RC_MAX_US = 2000;      // Maximum clamp value for RC input pulse width (in microseconds)
+    constexpr float RC_RANGE_US = static_cast<float>(RC_MAX_US - RC_NEUTRAL_US); // From neutral to max in one direction (500 us)
+
+    constexpr uint16_t RC_ISR_MIN_US = 800;   // Minimum valid pulse width for RC signal (in microseconds)
+    constexpr uint16_t RC_ISR_MAX_US = 2200;  // Maximum valid pulse width for RC signal (in microseconds)
+
+    constexpr uint32_t RC_SIGNAL_LOST_TIMEOUT_US = 100000;  // Timeout for RC signal loss detection (in microseconds)
+
+}  // namespace RcConfig

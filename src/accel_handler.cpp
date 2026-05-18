@@ -4,8 +4,8 @@
 #include <Wire.h>
 #include "SparkFun_LIS331.h"
 
-#include "homer_config.h"
 #include "accel_handler.h"
+#include "homer_config.h"
 
 static LIS331 xl;
 

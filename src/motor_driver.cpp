@@ -19,7 +19,7 @@ static uint32_t pulse_us_to_duty(uint16_t pulse_width_us) {
     // 1000 us -> about 205
     // 1500 us -> about 307
     // 2000 us -> about 410
-    return ((uint32_t)pulse_width_us * MotorConfig::ESC_PWM_MAX_DUTY) / MotorConfig::ESC_FRAME_US;
+    return (static_cast<uint32_t>(pulse_width_us) * MotorConfig::ESC_PWM_MAX_DUTY) / MotorConfig::ESC_FRAME_US;
 }
 
 // Helper function to write a specific pulse width to a given PWM channel (in microseconds)

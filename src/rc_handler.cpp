@@ -2,6 +2,7 @@
 //It also clamps pulse widths to expected min/max values to prevent issues from bad signals and returns the current RC input state as an RcInput struct for use in the main control loop
 
 #include <Arduino.h>
+
 #include "homer_config.h"
 #include "rc_handler.h"
 
