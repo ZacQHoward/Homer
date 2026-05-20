@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "accel_handler.h"
+#include "debugger.h"
 #include "homer_config.h"
 #include "motor_driver.h"
 #include "movement_control.h"
@@ -51,6 +52,8 @@ void setup() {
     init_motors();
     init_accel();
 
+    reset_rpm_history();
+
 }
 
 void loop() {
@@ -60,6 +63,7 @@ void loop() {
     SpinCommand spin_command = get_spin_command(rc_input.ch3_us);
 
     update_rpm_from_accel();
+    if (spin_command.active && DebugConfig::ENABLE_RPM_HISTORY) { log_rpm_history(spin_command); }
 
     echo_diagnostics(rc_input, translation_vector, spin_command);
 
@@ -70,7 +74,11 @@ void loop() {
 
     if (!spin_command.active) {
         motors_stop();
+        print_rpm_history();
+        delay(3000);
         return;
     }
+
+    apply_spin_only_test(spin_command);
 
 }

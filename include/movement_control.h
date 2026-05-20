@@ -23,5 +23,7 @@ float get_current_rpm();
 float get_max_rpm();
 
 void reset_rpm_history();
-void log_rpm_history();
+void log_rpm_history(const SpinCommand& spin_command);
 void print_rpm_history();
+
+void apply_spin_only_test(const SpinCommand& spin_command);
