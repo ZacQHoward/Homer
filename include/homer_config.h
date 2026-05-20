@@ -28,6 +28,14 @@ namespace AccelConfig {
 
 }  // namespace AccelConfig
 
+namespace DebugConfig {
+
+    constexpr bool ENABLE_RPM_HISTORY = true;
+    constexpr uint16_t RPM_HISTORY_SIZE = 200;
+    constexpr uint32_t RPM_HISTORY_LOG_INTERVAL_MS = 50;
+
+}  // namespace DebugConfig
+
 namespace HomerConfig {
 
     //----------TRANSLATIONAL DRIFT SETTINGS----------
