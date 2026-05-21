@@ -1,24 +1,7 @@
-#include "SparkFun_LIS331.h"
+#pragma once
 
-//Set high enough to allow for G forces at top RPM
-//LOW_RANGE - +/-100g for the H3LIS331DH
-//MED_RANGE - +/-200g for the H3LIS331DH
-//HIGH_RANGE - +/-400g for the H3LIS331DH
-#define ACCEL_RANGE LIS331::HIGH_RANGE   
+#include <stdint.h>
 
-//Set to correspond to ACCEL_RANGE
-#define ACCEL_MAX_SCALE 400
-
-//Change as needed as needed
-//(Adafuit breakout default is 0x18, Sparkfun default is 0x19)
-#define ACCEL_I2C_ADDRESS 0x19
-
-//Select which axis points toward the robot center / rotation radius.
-//0 = X, 1 = Y, 2 = Z
-#define ACCEL_FORCE_AXIS 2
-
-void init_accel();
-
-void get_accel_axes(int16_t &x, int16_t &y, int16_t &z);
-
-float get_accel_force_g();
+void init_accel();  // Setup I2C and initialize accelerometer
+void get_accel_axes(int16_t &x, int16_t &y, int16_t &z);    //Read raw accelerometer axis values
+float get_accel_force_g();  //Read accelerometer and convert to G's based on selected axis and scale

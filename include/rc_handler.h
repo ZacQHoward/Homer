@@ -1,24 +1,15 @@
-#ifndef HOMER_RC_HANDLER_H
-#define HOMER_RC_HANDLER_H
+#pragma once
 
-#include <Arduino.h>
+#include <stdint.h>
 
-void init_rc();
+// Represents the current state of the RC input channels and whether the signal is healthy
+struct RcInput {
+    uint16_t ch1_us;
+    uint16_t ch2_us;
+    uint16_t ch3_us;
+    uint16_t ch4_us;
+    bool healthy;
+};
 
-bool rc_signal_is_healthy();
-
-uint16_t rc_get_channel_pulse_us(uint8_t channel);
-uint16_t rc_get_ch1_pulse_us();
-uint16_t rc_get_ch2_pulse_us();
-uint16_t rc_get_ch3_pulse_us();
-uint16_t rc_get_ch4_pulse_us();
-
-#define RC_MIN_US 1000
-#define RC_NEUTRAL_US 1500
-#define RC_MAX_US 2000
-#define RC_TIMEOUT_US 100000
-#define RC_CONNECTION_TOLERANCE_US 5
-#define RC_ISR_MIN_US 800
-#define RC_ISR_MAX_US 2200
-
-#endif
+void init_rc(); // Setup RC input pins and interrupts
+RcInput read_rc_input();    // Read RC input values, check for signal health, and return as RcInput struct

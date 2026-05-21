@@ -1,76 +1,84 @@
 #include <Arduino.h>
 
 #include "accel_handler.h"
-#include "melty_config.h"
+#include "debugger.h"
+#include "homer_config.h"
 #include "motor_driver.h"
+#include "movement_control.h"
 #include "rc_handler.h"
-#include "spin_control.h"
 
-static uint16_t read_ch1() { return rc_get_ch1_pulse_us(); }
-static uint16_t read_ch2() { return rc_get_ch2_pulse_us(); }
-static uint16_t read_ch3() { return rc_get_ch3_pulse_us(); }
-static uint16_t read_ch4() { return rc_get_ch4_pulse_us(); }
+static void echo_diagnostics(const RcInput& input, const TranslationVector& translation_vector, const SpinCommand& spin_command) {
 
-static bool throttle_is_active() {
-  int centered = (int)read_ch3() - (int)RC_NEUTRAL_US;
-  return abs(centered) > 10;
-}
+    Serial.print("  RC Health: ");
+    Serial.print(input.healthy);
+    Serial.print("  CH1: ");
+    Serial.print(input.ch1_us);
+    Serial.print("  CH2: ");
+    Serial.print(input.ch2_us);
+    Serial.print("  CH3: ");
+    Serial.print(input.ch3_us);
+    Serial.print("  CH4: ");
+    Serial.print(input.ch4_us);
 
-static void echo_diagnostics() {
-  Serial.print("Raw Accel G: ");
-  Serial.print(get_accel_force_g(), 4);
-  Serial.print("  RC Health: ");
-  Serial.print(rc_signal_is_healthy());
-  Serial.print("  CH1: ");
-  Serial.print(read_ch1());
-  Serial.print("  CH2: ");
-  Serial.print(read_ch2());
-  Serial.print("  CH3: ");
-  Serial.print(read_ch3());
-  Serial.print("  CH4: ");
-  Serial.print(read_ch4());
-  Serial.print("  Max RPM: ");
-  Serial.print(get_max_rpm());
-  Serial.println();
-}
+    Serial.print("  TVec X: ");
+    Serial.print(translation_vector.x, 3);
+    Serial.print("  TVec Y: ");
+    Serial.print(translation_vector.y, 3);
+    Serial.print("  TVec Mag: ");
+    Serial.print(translation_vector.magnitude, 3);
+    Serial.print("  TVec Angle: ");
+    Serial.print(translation_vector.angle_deg, 1);
 
-static void wait_for_rc_and_neutral_throttle() {
-  while (!rc_signal_is_healthy() || throttle_is_active()) {
-    motors_off();
-    delay(300);
-    echo_diagnostics();
-  }
-}
+    Serial.print("  Spin Throttle: ");
+    Serial.print(spin_command.throttle, 3);
+    Serial.print("  Spin Active: ");
+    Serial.print(spin_command.active);
 
-static void handle_idle() {
-  motors_off();
-  delay(150);
-  echo_diagnostics();
+    Serial.print("  Raw Accel G: ");
+    Serial.print(get_accel_force_g(), 4);
+    Serial.print("  Current RPM: ");
+    Serial.print(get_current_rpm());
+    Serial.print("  Max RPM: ");
+    Serial.print(get_max_rpm());
+    Serial.println();
+
 }
 
 void setup() {
-  Serial.begin(115200);
 
-  init_motors();
-  init_rc();
-  init_accel();
+    Serial.begin(115200);
 
-#ifdef VERIFY_RC_THROTTLE_ZERO_AT_BOOT
-  wait_for_rc_and_neutral_throttle();
-#endif
+    init_rc();
+    init_motors();
+    init_accel();
+
+    reset_rpm_history();
+
 }
 
 void loop() {
-  if (!rc_signal_is_healthy()) {
-    motors_off();
-    delay(300);
-    echo_diagnostics();
-    return;
-  }
 
-  if (throttle_is_active()) {
-    spin_one_rotation();
-  } else {
-    handle_idle();
-  }
+    RcInput rc_input = read_rc_input();
+    TranslationVector translation_vector = get_translation_vector(rc_input.ch1_us, rc_input.ch2_us);
+    SpinCommand spin_command = get_spin_command(rc_input.ch3_us);
+
+    update_rpm_from_accel();
+    if (spin_command.active && DebugConfig::ENABLE_RPM_HISTORY) { log_rpm_history(spin_command); }
+
+    echo_diagnostics(rc_input, translation_vector, spin_command);
+
+    if (!rc_input.healthy) {
+        motors_stop();
+        return;
+    }
+
+    if (!spin_command.active) {
+        motors_stop();
+        print_rpm_history();
+        delay(3000);
+        return;
+    }
+
+    apply_spin_only_test(spin_command);
+
 }

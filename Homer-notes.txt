@@ -1,0 +1,94 @@
+Movement control big picture:
+
+INPUTS:
+- desired movement direction
+- desired spin speed
+- accelerometer readings
+- elapsed time
+
+STATE:
+- estimated phase
+- estimated RPM
+- confidence/stability
+
+OUTPUT:
+- motor bias timing
+
+	- Logic -
+Throttle is on, I am Spinning:
+- Get Translation Vector (from ch1 and ch2)
+
+- Rotation Period (How fast am I spinning) (Defined by PLL)
+
+- Estimate Current Spin Phase (Where am I currently in a single Rotation Period) (Defined by PLL)
+
+- When Should I Translate (At what Time during a single Rotation Period should I pluse motors)
+
+- Pulse Motors (Based on all 4 above)
+
+	- Pseudocode Logic -
+Throttle is on, I am Spinning:
+1. Get translation vector
+
+2. PLL updates RPM estimate
+   using accel + prediction
+
+3. PLL updates phase estimate
+   using RPM + elapsed time
+
+4. Determine if current phase
+   is inside translation window
+
+5. Apply motor bias
+
+Rotation Period / RPM:
+- predicted from spin throttle
+- measured from accel phase timing
+- estimated from accel magnitude using a = ω²r
+- blended into rpm_estimated
+
+	- Code Checklist -
+1. Read CH1 and CH2 PWM
+   - Print raw pulse widths.
+   - Confirm center is near 1500.
+
+2. Convert CH1/CH2 to normalized x/y
+   - Range should be about -1.0 to 1.0.
+
+3. Add deadzone
+   - Centered stick should output 0,0.
+
+4. Add magnitude
+   - Diagonal should clamp to 1.0, not 1.41.
+
+5. Add angle
+   - Confirm forward = 0°, right = 90°.
+
+6. Add spin throttle separately
+   - Do not mix translation yet.
+   - Just confirm CH3 still spins the robot.
+
+7. Add accelerometer RPM from spinning in place
+   - Print accel-derived RPM only.
+   - Do not translate yet.
+
+8. Add estimated rotation period
+   - Convert RPM to period in milliseconds.
+
+9. Add estimated phase
+   - Let phase increase from 0–360 while spinning.
+
+10. Add LED heading beacon
+   - Turn LED on near phase 0.
+   - Confirm the visual “front” makes sense.
+
+11. Add translation timing window
+   - Print when the code WOULD pulse motors.
+   - Do not actually pulse yet.
+
+12. Add weak motor bias
+   - Very small translation strength.
+   - Confirm it drifts roughly correctly.
+
+13. Tune pulse window and strength
+   - Then adjust timing offset, window width, and power.
