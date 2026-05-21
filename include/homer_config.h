@@ -39,7 +39,7 @@ namespace DebugConfig {
 namespace HomerConfig {
 
     //----------TRANSLATIONAL DRIFT SETTINGS----------
-    constexpr float ACCEL_MOUNT_RADIUS_CM = 5.3f;              //Radius of accelerometer from center of robot                      
+    constexpr float ACCEL_MOUNT_RADIUS_CM = 5.2f;              //Radius of accelerometer from center of robot                      
     constexpr float DEFAULT_ACCEL_ZERO_G_OFFSET = 2.75f;       //Offset value (in G) used to get 0G accelerometer reading when robot is at rest, For small-radius bots openmelt recommends trying H3LIS331 at +/-200g range (MED_RANGE) for improved accuracy (accel_handler.h)
     constexpr float BASE_SPIN_MAX_OFFSET_PERCENTAGE = 0.4f;    //Offset percentage value (0.0f - 1.0f) to limit base spin speed below full ESC range so translation modulation still has headroom at high throttle
 

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Preferences.h>
+#include <Wire.h>
 
 #include "debugger.h"
 #include "movement_control.h"
@@ -100,4 +101,35 @@ void print_saved_rpm_debug_log_from_flash() {
 
 void clear_saved_rpm_debug_log() {
     prefs.clear();
+}
+
+void scan_i2c() {
+
+	Serial.println("Scanning I2C...");
+
+    uint8_t count = 0;
+
+    for (uint8_t address = 1; address < 127; address++) {
+
+        Wire.beginTransmission(address);
+        uint8_t error = Wire.endTransmission();
+
+        if (error == 0) {
+            Serial.print("I2C device found at 0x");
+
+            if (address < 16) {
+                Serial.print("0");
+            }
+
+            Serial.println(address, HEX);
+
+            count++;
+        }
+    }
+
+    if (count == 0) {
+        Serial.println("No I2C devices found");
+    }
+
+    Serial.println("Scan done");
 }

@@ -188,9 +188,9 @@ void apply_spin_only_test(const SpinCommand& spin_command) {
     int spin_offset_us = static_cast<int>(spin_output * RcConfig::RC_RANGE_US);
 
     // Apply same spin offset to both motors for in-place spinning
-    // positive = clockwise and negative = counterclockwise when looking at the motor from wheel side <- Double check this and change +/- if needed
-    uint16_t motor_1_us = RcConfig::RC_NEUTRAL_US + spin_offset_us;
-    uint16_t motor_2_us = RcConfig::RC_NEUTRAL_US + spin_offset_us;
+    // Above Neutral = Clockwise, Below Neutral = CounterClockwise, when looking at the motor from wheel side
+    uint16_t motor_1_us = RcConfig::RC_NEUTRAL_US - spin_offset_us;
+    uint16_t motor_2_us = RcConfig::RC_NEUTRAL_US - spin_offset_us;
 
     // Write calculated pulse widths to motors
     motor_1_write_us(motor_1_us);

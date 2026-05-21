@@ -19,7 +19,7 @@ void init_accel() {
                           	//value of 400000 allows accel read in ~1ms and
                           	//is verfied to work with Sparkfun level converter
                           	//(some level converters have issues at higher speeds)
-  
+
 	xl.setI2CAddr(AccelConfig::ACCEL_I2C_ADDRESS);
 	xl.begin(LIS331::USE_I2C);
 	xl.setFullScale(AccelConfig::ACCEL_RANGE);  //sets accelerometer to specified scale (100, 200, 400g)
