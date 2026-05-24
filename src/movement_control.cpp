@@ -29,10 +29,10 @@ TranslationVector get_translation_vector(uint16_t ch1_us, uint16_t ch2_us) {
     float ch1_normalized = normalize_rc_channel(ch1_us);
     float ch2_normalized = normalize_rc_channel(ch2_us);
 
-    vec.x = ch1_normalized;  // +X = right
-    vec.y = -ch2_normalized; // +Y = backward
+    vec.x = ch1_normalized;  // +X = Left/Right
+    vec.y = ch2_normalized; // +Y = Forward/Backward
 
-    // Apply deadzone
+    // Apply deadzone (temp change so left/right isnt as touchy)
     if (fabs(vec.x) < MovementConfig::TRANS_VECTOR_DEADZONE) { vec.x = 0.0f; }
     if (fabs(vec.y) < MovementConfig::TRANS_VECTOR_DEADZONE) { vec.y = 0.0f; }
 
@@ -75,17 +75,13 @@ SpinCommand get_spin_command(uint16_t ch3_us) {
 }
 
 void apply_movement(const SpinCommand& spin_command, const TranslationVector& translation_vector) {
-    
-    constexpr float BODY_DRIVE_SCALE = 0.25f;
+    float spin_output = -spin_command.throttle;
 
-    float spin_output = -spin_command.throttle * HomerConfig::BASE_SPIN_MAX_OFFSET_PERCENTAGE;
+    float motor_1_diff = translation_vector.x - translation_vector.y;
+    float motor_2_diff = translation_vector.x + translation_vector.y;
 
-    float diff_left = (translation_vector.x + translation_vector.y) * BODY_DRIVE_SCALE;
-
-    float diff_right = (translation_vector.x - translation_vector.y) * BODY_DRIVE_SCALE;
-
-    float motor_1_output = spin_output + diff_left;
-    float motor_2_output = spin_output + diff_right;
+    float motor_1_output = spin_output + motor_1_diff;
+    float motor_2_output = spin_output + motor_2_diff;
 
     motor_1_output = clamp_normalized(motor_1_output);
     motor_2_output = clamp_normalized(motor_2_output);

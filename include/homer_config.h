@@ -35,7 +35,7 @@ namespace MotorConfig {
 namespace MovementConfig {
 
     constexpr float THROTTLE_DEADZONE = 0.02f;
-    constexpr float TRANS_VECTOR_DEADZONE = 0.02f;
+    constexpr float TRANS_VECTOR_DEADZONE = 0.2f;
 
 }  // namespace MovementConfig
 
