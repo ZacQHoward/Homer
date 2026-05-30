@@ -3,57 +3,43 @@
 #include "homer_config.h"
 #include "motor_driver.h"
 
-// Helper function to clamp pulse widths to the valid range for the ESCs 1000-2000 (in microseconds)
-static uint16_t clamp_pulse_us(uint16_t pulse_width_us) {
+// Helper function to convert normalized input (-1.0 to 1.0) into ESC pulse width in microseconds to write to the motors
+static uint16_t normalized_to_pulse_us(float output) {
+    if (output > 1.0f) output = 1.0f;
+    if (output < -1.0f) output = -1.0f;
+
+    int pulse_width_us = MotorConfig::ESC_NEUTRAL_US + static_cast<int>(output * MotorConfig::ESC_RANGE_US);
+
     if (pulse_width_us < MotorConfig::ESC_MIN_US) return MotorConfig::ESC_MIN_US;
     if (pulse_width_us > MotorConfig::ESC_MAX_US) return MotorConfig::ESC_MAX_US;
-    return pulse_width_us;
+
+    return static_cast<uint16_t>(pulse_width_us);
 }
 
-// Helper function to convert a pulse width in microseconds to the corresponding duty cycle value for the configured PWM resolution and frequency
-static uint32_t pulse_us_to_duty(uint16_t pulse_width_us) {
-    pulse_width_us = clamp_pulse_us(pulse_width_us);
+// Function to write a specific pulse width in microseconds to a motor's PWM channel, with clamping to min/max values
+static void write_motor_us(uint8_t pwm_channel, uint16_t pulse_width_us) {
+    if (pulse_width_us < MotorConfig::ESC_MIN_US) pulse_width_us = MotorConfig::ESC_MIN_US;
+    if (pulse_width_us > MotorConfig::ESC_MAX_US) pulse_width_us = MotorConfig::ESC_MAX_US;
 
-    // duty = pulse_width / frame_width * max_duty
-    // Example at 12-bit:
-    // 1000 us -> about 205
-    // 1500 us -> about 307
-    // 2000 us -> about 410
-    return (static_cast<uint32_t>(pulse_width_us) * MotorConfig::ESC_PWM_MAX_DUTY) / MotorConfig::ESC_FRAME_US;
-}
+    uint32_t duty = (static_cast<uint32_t>(pulse_width_us) * MotorConfig::ESC_PWM_MAX_DUTY) / MotorConfig::ESC_FRAME_US;
 
-// Helper function to write a specific pulse width to a given PWM channel (in microseconds)
-static void motor_write_us(uint8_t pwm_channel, uint16_t pulse_width_us) {
-    uint32_t duty = pulse_us_to_duty(pulse_width_us);
     ledcWrite(pwm_channel, duty);
 }
 
-// Functions to write a specific pulse width to each motor's ESC (in microseconds)
-void motor_1_write_us(uint16_t pulse_width_us) {
-    motor_write_us(MotorConfig::MOTOR_1_PWM_CHANNEL, pulse_width_us);
+// Public function to write normalized motor inputs, which converts to pulse widths and writes to each motor
+void motors_write_normalized(float motor_1_input, float motor_2_input) {
+    write_motor_us(MotorConfig::MOTOR_1_PWM_CHANNEL, normalized_to_pulse_us(motor_1_input));
+    write_motor_us(MotorConfig::MOTOR_2_PWM_CHANNEL, normalized_to_pulse_us(motor_2_input));
 }
 
-void motor_2_write_us(uint16_t pulse_width_us) {
-    motor_write_us(MotorConfig::MOTOR_2_PWM_CHANNEL, pulse_width_us);
-}
-
-// Functions to set each motor to neutral pulse width (stop)
-void motor_1_neutral() {
-    motor_1_write_us(MotorConfig::ESC_NEUTRAL_US);
-}
-
-void motor_2_neutral() {
-    motor_2_write_us(MotorConfig::ESC_NEUTRAL_US);
-}
-
-// Sets both motors to neutral pulse width, effectively stopping the robot
+// Public function to stop the motors by writing the neutral pulse width to both motor channels
 void motors_stop() {
-    motor_1_neutral();
-    motor_2_neutral();
+    write_motor_us(MotorConfig::MOTOR_1_PWM_CHANNEL, MotorConfig::ESC_NEUTRAL_US);
+    write_motor_us(MotorConfig::MOTOR_2_PWM_CHANNEL, MotorConfig::ESC_NEUTRAL_US);
 }
 
 // Configures PWM channels and attaches pins from homer_config.h (how esp32 core handles PWM configuration and pin attachment)
-void init_motors() {
+void init_motors() { 
 
     ledcSetup(MotorConfig::MOTOR_1_PWM_CHANNEL, MotorConfig::ESC_PWM_FREQUENCY_HZ, MotorConfig::ESC_PWM_RESOLUTION_BITS);
     ledcSetup(MotorConfig::MOTOR_2_PWM_CHANNEL, MotorConfig::ESC_PWM_FREQUENCY_HZ, MotorConfig::ESC_PWM_RESOLUTION_BITS);

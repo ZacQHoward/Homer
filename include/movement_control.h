@@ -17,13 +17,4 @@ struct SpinCommand {
 TranslationVector get_translation_vector(uint16_t ch1_us, uint16_t ch2_us);
 SpinCommand get_spin_command(uint16_t ch3_us);
 
-void update_rpm_from_accel();
-
-float get_current_rpm();
-float get_max_rpm();
-
-void reset_rpm_history();
-void log_rpm_history(const SpinCommand& spin_command);
-void print_rpm_history();
-
-void apply_spin_only_test(const SpinCommand& spin_command);
+void apply_movement(const SpinCommand& spin_command, const TranslationVector& translation_vector);

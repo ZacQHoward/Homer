@@ -44,7 +44,7 @@ namespace HomerConfig {
     constexpr float BASE_SPIN_MAX_OFFSET_PERCENTAGE = 0.4f;    //Offset percentage value (0.0f - 1.0f) to limit base spin speed below full ESC range so translation modulation still has headroom at high throttle
 
     //May need this later
-    constexpr uint16_t MIN_TRANSLATION_RPM = 400;                            //full power spin in below this number (increasing can reduce spin-up time)
+    constexpr uint16_t MIN_TRANSLATION_RPM = 400;   //full power spin in below this number (increasing can reduce spin-up time)
 
     //----------PIN MAPPINGS----------
     constexpr uint8_t MOTOR_PIN1 = D0;  //Pin for Motor 1 driver (right motor if weapon facing away from you, yellow wire solo pin in mr30)
@@ -71,6 +71,7 @@ namespace MotorConfig {
     constexpr uint16_t ESC_MIN_US = 1000;      // Minimum pulse width for ESC (full reverse in microseconds)
     constexpr uint16_t ESC_NEUTRAL_US = 1500;  // Neutral pulse width for ESC (stop in microseconds)
     constexpr uint16_t ESC_MAX_US = 2000;      // Maximum pulse width for ESC (full forward in microseconds)
+    constexpr float ESC_RANGE_US = static_cast<float>(ESC_MAX_US - ESC_NEUTRAL_US);
 
     constexpr uint32_t ESC_PWM_FREQUENCY_HZ = 50;   // Increase for faster ESC command updates and potentially smoother response, Higher values may reduce compatibility with some ESCs
     constexpr uint32_t ESC_FRAME_US = 1000000UL / ESC_PWM_FREQUENCY_HZ;  // Frame width in microseconds based on configured frequency (e.g. 20000 us for 50 Hz)
@@ -86,6 +87,7 @@ namespace MovementConfig {
 
     constexpr float THROTTLE_DEADZONE = 0.02f;      // Deadzone for channel ch3 (Throttle) to prevent noise around neutral from causing movement
     constexpr float TRANS_VECTOR_DEADZONE = 0.02f;  // Deadzone for ch1 and ch2, corresponds to +/-10 us around neutral (10 us / 500 us)
+    constexpr float DIFF_TRANS_VECTOR_DEADZONE = 0.2f;   // Diff Drive Deadzone for ch1 and ch2, corresponds to +/-10 us around neutral (10 us / 500 us)
 
 }  // namespace MovementConfig
 

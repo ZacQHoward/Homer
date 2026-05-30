@@ -1,3 +1,8 @@
-# Homer Fallback
+# Homer Diff Drive
 
-This is code that works to spin the robot and will be used if I cant get the robot to translate in code.
+This branch combines two drive modes:
+
+- `CH3` spin mode
+- `CH2` forward/back and `CH1` left/right body-frame diff drive
+
+If RC signal is lost, both motors are sent to neutral.
