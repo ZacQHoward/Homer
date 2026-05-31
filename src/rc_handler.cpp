@@ -1,10 +1,9 @@
 //This file interfaces with the RC receiver to get channel pulse widths via interrupts while checking for signal health based on time since last valid pulse
 //It also clamps pulse widths to expected min/max values to prevent issues from bad signals and returns the current RC input state as an RcInput struct for use in the main control loop
 
-#include <Arduino.h>
-
-#include "homer_config.h"
 #include "rc_handler.h"
+#include <Arduino.h>
+#include "homer_config.h"
 
 // Internal struct to keep track of each RC channel's state for interrupt handling
 struct RcChannelState {
@@ -30,14 +29,11 @@ static inline void IRAM_ATTR handle_channel_interrupt(volatile RcChannelState& c
 
     uint32_t now_us = micros();
 
-    if (now_us <= channel.rise_time_us) {
-        return;
-    }
+    if (now_us <= channel.rise_time_us) { return; }
 
     uint32_t pulse_width_us = now_us - channel.rise_time_us;
 
-    if (pulse_width_us >= RcConfig::RC_ISR_MIN_US &&
-        pulse_width_us <= RcConfig::RC_ISR_MAX_US) {
+    if (pulse_width_us >= RcConfig::RC_ISR_MIN_US && pulse_width_us <= RcConfig::RC_ISR_MAX_US) {
         channel.pulse_width_us = pulse_width_us;
         channel.last_pulse_us = now_us;
     }
@@ -77,13 +73,9 @@ static uint16_t read_channel_us(volatile RcChannelState& channel, uint32_t now_u
         return RcConfig::RC_NEUTRAL_US;
     }
 
-    if (pulse_width_us < RcConfig::RC_MIN_US) {
-        return RcConfig::RC_MIN_US;
-    }
-
-    if (pulse_width_us > RcConfig::RC_MAX_US) {
-        return RcConfig::RC_MAX_US;
-    }
+    // Clamp pulse width to expected min/max values
+    if (pulse_width_us < RcConfig::RC_MIN_US) { return RcConfig::RC_MIN_US; }
+    if (pulse_width_us > RcConfig::RC_MAX_US) { return RcConfig::RC_MAX_US; }
 
     return static_cast<uint16_t>(pulse_width_us);
 
@@ -118,5 +110,17 @@ RcInput read_rc_input() {
     input.ch4_us = read_channel_us(channel_4, now_us, input.healthy);
 
     return input;
+
+}
+
+// Convert RC pulse width in microseconds into normalized input (-1.0 to 1.0)
+float normalize_rc_channel(uint16_t pulse_width_us) {
+    
+    float value = (static_cast<float>(pulse_width_us) - static_cast<float>(RcConfig::RC_NEUTRAL_US)) / RcConfig::RC_RANGE_US;
+
+    if (value > 1.0f) return 1.0f;
+    if (value < -1.0f) return -1.0f;
+
+    return value;
 
 }

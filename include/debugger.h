@@ -1,10 +1,14 @@
 #pragma once
 
+#include "rc_handler.h"
+#include "movement_control.h"
+
 void init_debug_logger();
-
-void save_rpm_debug_log_to_flash();
-void clear_saved_rpm_debug_log();
-
-void print_from_flash();
+void log_rpm_history(float rpm, uint16_t throttle);
+void save_rpm_history_to_flash();
+void clear_saved_rpm_history();
+void print_saved_rpm_history_from_flash();
 
 void scan_i2c();
+
+void echo_diagnostics(const RcInput& input, const TranslationVector& translation_vector, const SpinCommand& spin_command);

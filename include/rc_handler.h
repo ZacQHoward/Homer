@@ -13,3 +13,4 @@ struct RcInput {
 
 void init_rc(); // Setup RC input pins and interrupts
 RcInput read_rc_input();    // Read RC input values, check for signal health, and return as RcInput struct
+float normalize_rc_channel(uint16_t pulse_width_us); // Convert RC pulse width in microseconds into normalized input (-1.0 to 1.0)

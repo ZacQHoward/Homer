@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "rc_handler.h"
 
 struct TranslationVector {
     float x;          // forward = positive
@@ -14,7 +15,11 @@ struct SpinCommand {
     bool active;      // true if throttle is non zero after applying deadzone, false if within deadzone
 };
 
-TranslationVector get_translation_vector(uint16_t ch1_us, uint16_t ch2_us);
+TranslationVector get_translation_vector(uint16_t ch1_us, uint16_t ch2_us, float x_deadzone, float y_deadzone);
 SpinCommand get_spin_command(uint16_t ch3_us);
 
-void apply_movement(const SpinCommand& spin_command, const TranslationVector& translation_vector);
+float get_current_rpm();
+float get_max_rpm();
+void update_rpm_from_accel();
+
+void apply_movement(const RcInput& rc_input);

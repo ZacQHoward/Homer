@@ -1,14 +1,15 @@
-#include <Arduino.h>
+// This file interfaces with the motors to provide functions for initializing, stopping, and writing normalized motor commands which are converted to ESC pulse widths
 
-#include "homer_config.h"
 #include "motor_driver.h"
+#include <Arduino.h>
+#include "homer_config.h"
 
 // Helper function to convert normalized input (-1.0 to 1.0) into ESC pulse width in microseconds to write to the motors
-static uint16_t normalized_to_pulse_us(float output) {
-    if (output > 1.0f) output = 1.0f;
-    if (output < -1.0f) output = -1.0f;
+static uint16_t normalized_to_pulse_us(float input) {
+    if (input > 1.0f) input = 1.0f;
+    if (input < -1.0f) input = -1.0f;
 
-    int pulse_width_us = MotorConfig::ESC_NEUTRAL_US + static_cast<int>(output * MotorConfig::ESC_RANGE_US);
+    int16_t pulse_width_us = MotorConfig::ESC_NEUTRAL_US + static_cast<int16_t>(input * MotorConfig::ESC_RANGE_US);
 
     if (pulse_width_us < MotorConfig::ESC_MIN_US) return MotorConfig::ESC_MIN_US;
     if (pulse_width_us > MotorConfig::ESC_MAX_US) return MotorConfig::ESC_MAX_US;
@@ -17,7 +18,7 @@ static uint16_t normalized_to_pulse_us(float output) {
 }
 
 // Function to write a specific pulse width in microseconds to a motor's PWM channel, with clamping to min/max values
-static void write_motor_us(uint8_t pwm_channel, uint16_t pulse_width_us) {
+void write_motor_us(uint8_t pwm_channel, uint16_t pulse_width_us) {
     if (pulse_width_us < MotorConfig::ESC_MIN_US) pulse_width_us = MotorConfig::ESC_MIN_US;
     if (pulse_width_us > MotorConfig::ESC_MAX_US) pulse_width_us = MotorConfig::ESC_MAX_US;
 

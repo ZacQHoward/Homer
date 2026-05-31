@@ -10,9 +10,10 @@ namespace AccelConfig {
     //LOW_RANGE - +/-100g for the H3LIS331DH
     //MED_RANGE - +/-200g for the H3LIS331DH
     //HIGH_RANGE - +/-400g for the H3LIS331DH
-    constexpr auto ACCEL_RANGE = LIS331::HIGH_RANGE;
+    constexpr LIS331::fs_range ACCEL_RANGE = LIS331::HIGH_RANGE;
 
-    constexpr int getAccelScale(uint8_t range) {
+    // Helper function to get scale from range
+    constexpr int getAccelScale(LIS331::fs_range range) {
         return (range == LIS331::LOW_RANGE)  ? 100 :
                (range == LIS331::MED_RANGE)  ? 200 :
                (range == LIS331::HIGH_RANGE) ? 400 :
@@ -20,11 +21,15 @@ namespace AccelConfig {
     }
     constexpr int ACCEL_MAX_SCALE = getAccelScale(ACCEL_RANGE);
 
-    //Adafuit breakout default is 0x18, Sparkfun default is 0x19
+    // Increase I2C speed to reduce read times a bit value of 400000 allows accel read in ~1ms
+    // verified to work with Sparkfun level converter (some level converters have issues at higher speeds)
+    constexpr uint32_t I2C_FREQUENCY_HZ = 400000;
+
+    //Adafruit breakout default is 0x18, Sparkfun default is 0x19
     constexpr uint8_t ACCEL_I2C_ADDRESS = 0x19;
 
-    //Select which axis points toward the robot center (0 = X, 1 = Y, 2 = Z)
-    constexpr uint8_t ACCEL_FORCE_AXIS = 2;
+    //Select which axis points toward the robot center (LIS331::X_AXIS = X, LIS331::Y_AXIS = Y, LIS331::Z_AXIS = Z)
+    constexpr LIS331::int_axis ACCEL_FORCE_AXIS = LIS331::Z_AXIS;
 
 }  // namespace AccelConfig
 
@@ -71,7 +76,7 @@ namespace MotorConfig {
     constexpr uint16_t ESC_MIN_US = 1000;      // Minimum pulse width for ESC (full reverse in microseconds)
     constexpr uint16_t ESC_NEUTRAL_US = 1500;  // Neutral pulse width for ESC (stop in microseconds)
     constexpr uint16_t ESC_MAX_US = 2000;      // Maximum pulse width for ESC (full forward in microseconds)
-    constexpr float ESC_RANGE_US = static_cast<float>(ESC_MAX_US - ESC_NEUTRAL_US);
+    constexpr float ESC_RANGE_US = static_cast<float>(ESC_MAX_US - ESC_NEUTRAL_US); // From neutral to max in one direction (500 us)
 
     constexpr uint32_t ESC_PWM_FREQUENCY_HZ = 50;   // Increase for faster ESC command updates and potentially smoother response, Higher values may reduce compatibility with some ESCs
     constexpr uint32_t ESC_FRAME_US = 1000000UL / ESC_PWM_FREQUENCY_HZ;  // Frame width in microseconds based on configured frequency (e.g. 20000 us for 50 Hz)
@@ -85,9 +90,18 @@ namespace MotorConfig {
 
 namespace MovementConfig {
 
-    constexpr float THROTTLE_DEADZONE = 0.02f;      // Deadzone for channel ch3 (Throttle) to prevent noise around neutral from causing movement
-    constexpr float TRANS_VECTOR_DEADZONE = 0.02f;  // Deadzone for ch1 and ch2, corresponds to +/-10 us around neutral (10 us / 500 us)
-    constexpr float DIFF_TRANS_VECTOR_DEADZONE = 0.2f;   // Diff Drive Deadzone for ch1 and ch2, corresponds to +/-10 us around neutral (10 us / 500 us)
+    // Drive Mode Options: DRIVE_MANUAL, DRIVE_DIFF, DRIVE_MELTYBRAIN
+    enum DriveMode {
+    MANUAL,
+    DIFF_DRIVE,
+    MELTYBRAIN
+    };
+
+    constexpr DriveMode DRIVE_MODE = DIFF_DRIVE; // Variable used to determine movement code in movement_control.cpp
+
+    constexpr float THROTTLE_DEADZONE = 0.03f;          // Deadzone for channel ch3 (Throttle) to prevent noise around neutral from causing movement
+    constexpr float TRANS_VECTOR_DEADZONE = 0.02f;      // Deadzone for ch1 and ch2 (Translation) to prevent noise around neutral from causing movement
+    constexpr float DIFF_TRANS_VECTOR_DEADZONE = 0.2f;  // Diff Drive Deadzone for ch1 and ch2, mostly for preventing turning when trying to go straight
 
 }  // namespace MovementConfig
 

@@ -1,3 +1,19 @@
+Lab Testing Checklist:
+- for motor_driver.h function "motors_write_normalized" double check the comments validity
+- check that translation vector is correct with ch1/2 movements
+- check that movement is correct for diff drive
+   - If ch3 up spins opposite of what I want, change "float spin = -spin_command.throttle;"
+   - If left/right steering is reversed, swap the signs for "float motor_1_drive = forward + turn;"
+   - If forward stick (ch2) drives backward, flip forward "float forward = -translation_vector.x;"
+
+Verify accel communicates
+Verify RPM changes with spin speed
+Verify spin direction sign
+Verify diff drive signs
+Verify flash save works
+Verify log prints after reboot
+Record PWM vs RPM table
+
 Movement control big picture:
 
 INPUTS:

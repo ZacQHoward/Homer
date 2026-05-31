@@ -14,9 +14,15 @@ void setup() {
     init_motors();
     init_accel();
 
+    init_debug_logger();
+    delay(2000);
+    print_saved_rpm_history_from_flash();
+
 }
 
 void loop() {
+
+    static bool was_spinning = false;
 
     RcInput rc_input = read_rc_input();
 
@@ -34,6 +40,21 @@ void loop() {
     );
 
     SpinCommand spin_command = get_spin_command(rc_input.ch3_us);
+
+    update_rpm_from_accel();
+
+    if (spin_command.active && DebugConfig::ENABLE_RPM_HISTORY) {
+        log_rpm_history(get_current_rpm(), rc_input.ch3_us);
+    }
+
+    if (spin_command.active) {
+        was_spinning = true;
+    } else {
+        if (was_spinning) {
+            save_rpm_history_to_flash();
+            was_spinning = false;
+        }
+    }
 
     echo_diagnostics(rc_input, translation_vector, spin_command);
 
