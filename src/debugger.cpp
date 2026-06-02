@@ -64,7 +64,7 @@ void save_rpm_history_to_flash() {
         prefs.putFloat(key, rpm_history[physical_index]);
 
         snprintf(key, sizeof(key), "t%03u", i);
-        prefs.putFloat(key, throttle_history[physical_index]);
+        prefs.putUShort(key, throttle_history[physical_index]);
     }
 }
 
@@ -100,6 +100,29 @@ void print_saved_rpm_history_from_flash() {
     }
 
     Serial.println("RPM_HISTORY_END");
+}
+
+void handle_debug_controls(uint16_t ch4_us, bool spin_active) {
+
+    if (spin_active) { return; }
+
+    static bool ch4_was_low = false;
+    static bool ch4_was_high = false;
+
+    bool ch4_low = ch4_us < 1200;
+    bool ch4_high = ch4_us > 1800;
+
+    if (ch4_low && !ch4_was_low) {
+        clear_saved_rpm_history();
+        Serial.println("RPM_HISTORY_CLEARED");
+    }
+
+    if (ch4_high && !ch4_was_high) {
+        print_saved_rpm_history_from_flash();
+    }
+
+    ch4_was_low = ch4_low;
+    ch4_was_high = ch4_high;
 }
 
 void scan_i2c() {
@@ -159,6 +182,9 @@ void echo_diagnostics(const RcInput& input, const TranslationVector& translation
     Serial.print(spin_command.throttle, 3);
     Serial.print("  Spin Active: ");
     Serial.print(spin_command.active);
+
+    Serial.print("  Accel G: ");
+    Serial.print(get_accel_force_g(), 3);
     Serial.println();
 
 }

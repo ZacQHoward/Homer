@@ -15,8 +15,6 @@ void setup() {
     init_accel();
 
     init_debug_logger();
-    delay(2000);
-    print_saved_rpm_history_from_flash();
 
 }
 
@@ -41,6 +39,8 @@ void loop() {
 
     SpinCommand spin_command = get_spin_command(rc_input.ch3_us);
 
+    handle_debug_controls(rc_input.ch4_us, spin_command.active);
+
     update_rpm_from_accel();
 
     if (spin_command.active && DebugConfig::ENABLE_RPM_HISTORY) {
@@ -56,7 +56,7 @@ void loop() {
         }
     }
 
-    echo_diagnostics(rc_input, translation_vector, spin_command);
+    // echo_diagnostics(rc_input, translation_vector, spin_command);
 
     apply_movement(rc_input);
     

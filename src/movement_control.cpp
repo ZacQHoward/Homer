@@ -99,10 +99,10 @@ static void apply_diff_drive(const SpinCommand& spin_command, const TranslationV
     // For your mirrored motor setup:
     // same sign on both motors = spin
     // opposite signs on motors = translation/turn-style driving
-    float motor_1_drive = forward - turn;
-    float motor_2_drive = forward + turn;
+    float motor_1_drive = forward + turn;
+    float motor_2_drive = forward - turn;
 
-    float motor_1_output = spin + motor_1_drive;
+    float motor_1_output = spin - motor_1_drive;
     float motor_2_output = spin + motor_2_drive;
 
     // OLD DIFF
