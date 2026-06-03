@@ -10,6 +10,7 @@
 
 static float current_rpm = 0.0f;
 static float max_rpm = 0.0f;
+static constexpr float MAX_TEST_THROTTLE = 0.35f;
 
 // -- Movement Components --
 // Helper function to convert raw RC input channels into a translation vector with x/y components, magnitude, and angle
@@ -92,30 +93,27 @@ static void apply_diff_drive(const SpinCommand& spin_command, const TranslationV
     float forward = translation_vector.x;
     float turn = translation_vector.y;
 
-    // Negative may be needed depending on transmitter/throttle direction.
-    // Lab test: CH3 up should spin the robot in your preferred spin-up direction.
+    // testing
+    // float limited_throttle = spin_command.throttle;
+
+    // if (limited_throttle > MAX_TEST_THROTTLE) {
+    //     limited_throttle = MAX_TEST_THROTTLE;
+    // }
+
+    // if (limited_throttle < -MAX_TEST_THROTTLE) {
+    //     limited_throttle = -MAX_TEST_THROTTLE;
+    // }
+
+    // float spin = -limited_throttle;
+
+    // Negative makes bot spin the correct direction, counter-clockwise for positive throttle
     float spin = -spin_command.throttle;
 
-    // For your mirrored motor setup:
-    // same sign on both motors = spin
-    // opposite signs on motors = translation/turn-style driving
     float motor_1_drive = forward + turn;
     float motor_2_drive = forward - turn;
 
     float motor_1_output = spin - motor_1_drive;
     float motor_2_output = spin + motor_2_drive;
-
-    // OLD DIFF
-    // // Base spin output is based on throttle (ch3, up/positive for counter-clockwise, down/negative for clockwise)
-    // float spin_output = -spin_command.throttle;
-
-    // // Calculate motor output differences based on translation vector
-    // float motor_1_diff = translation_vector.x - translation_vector.y;
-    // float motor_2_diff = translation_vector.x + translation_vector.y;
-
-    // // Combine spin and translation components for each motor
-    // float motor_1_output = spin_output + motor_1_diff;
-    // float motor_2_output = spin_output + motor_2_diff;
 
     // Write normalized outputs to motors clamping is handled in motor driver
     motors_write_normalized(motor_1_output, motor_2_output);

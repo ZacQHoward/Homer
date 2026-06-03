@@ -94,8 +94,8 @@ void print_saved_rpm_history_from_flash() {
         snprintf(key, sizeof(key), "r%03u", i);
         float rpm = prefs.getFloat(key, 0.0f);
 
-        Serial.print(throttle);
-        Serial.print(",");
+        // Serial.print(throttle);
+        // Serial.print(",");
         Serial.println(rpm, 2);
     }
 

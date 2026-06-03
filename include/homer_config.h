@@ -103,6 +103,20 @@ namespace MovementConfig {
     constexpr float TRANS_VECTOR_DEADZONE = 0.02f;      // Deadzone for ch1 and ch2 (Translation) to prevent noise around neutral from causing movement
     constexpr float DIFF_TRANS_VECTOR_DEADZONE = 0.2f;  // Diff Drive Deadzone for ch1 and ch2, mostly for preventing turning when trying to go straight
 
+    struct RpmLookupEntry {
+    uint16_t pwm_us;
+    float rpm;
+    };
+
+    constexpr RpmLookupEntry RPM_LOOKUP[] = {
+        {1500,    0.0f},
+        {1550,  512.5f},
+        {1575, 1065.6f},
+        {1600, 1530.4f},
+        {1625, 1943.9f},
+        {1650, 2112.2f},
+    };
+
 }  // namespace MovementConfig
 
 namespace RcConfig {
